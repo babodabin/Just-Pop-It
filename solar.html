@@ -3,13 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Just Pop It</title>
-<!-- PWA -->
+<title>Just Pop It — SOLAR</title>
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Just Pop It">
 <meta name="theme-color" content="#000000">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" rel="stylesheet">
@@ -23,12 +21,9 @@
   }
   #wrap {
     position:fixed; inset:0; display:flex; flex-direction:column;
-    /* 아이폰 상태바(시계/배터리) 줄은 게임 영역에서 제외 — 최소 52px 확보 */
     padding-top:max(env(safe-area-inset-top, 0px), 52px);
     padding-bottom:env(safe-area-inset-bottom);
   }
-
-  /* ── 플레이 필드 ── */
   #field-box {
     flex:1; position:relative; margin:10px 8px 6px 8px;
     border:2px solid rgba(255,255,255,0.85);
@@ -38,7 +33,6 @@
   }
   canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
 
-  /* ── 하단 바 ── */
   #bottom-bar {
     height:96px; position:relative;
     display:flex; align-items:flex-start; justify-content:space-between;
@@ -48,17 +42,16 @@
     letter-spacing:0.12em;
   }
   #next-area { display:flex; flex-direction:column; gap:6px; }
-  #next-queue { display:flex; gap:7px; margin-top:4px; }
+  #next-queue { display:flex; gap:7px; margin-top:4px; align-items:center; }
   .q-ball {
-    width:30px; height:30px; border-radius:50%;
+    border-radius:50%;
     display:flex; align-items:center; justify-content:center;
-    font-size:17px; background:#000;
+    background:#000;
   }
   #right-area { text-align:right; display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
   #menu-btn, #music-btn { cursor:pointer; }
   #menu-btn:active, #music-btn:active { color:#fff; }
 
-  /* 발사대 (하단 중앙) */
   #launcher {
     position:absolute; left:50%; top:-22px; transform:translateX(-50%);
     width:44px; height:44px; border-radius:50%;
@@ -67,9 +60,14 @@
     display:flex; align-items:center; justify-content:center;
     background:#000;
   }
-  #launcher .q-ball { width:34px; height:34px; font-size:19px; }
+  #launcher .q-ball { width:34px; height:34px; }
+  #launcher-name {
+    position:absolute; top:47px; left:50%; transform:translateX(-50%);
+    font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;
+    font-size:13px; letter-spacing:0.08em; white-space:nowrap;
+    text-shadow:0 0 6px currentColor;
+  }
 
-  /* ── 오버레이 (메뉴 / 게임오버) ── */
   #overlay {
     position:fixed; inset:0; z-index:10;
     display:flex; flex-direction:column; justify-content:center; align-items:center; gap:20px;
@@ -98,6 +96,11 @@
     box-shadow:0 0 16px rgba(255,255,255,0.4);
   }
   #overlay button:active { transform:translateY(2px); }
+  #classic-link {
+    color:#6c7171; font-size:clamp(13px,3.8vw,16px); letter-spacing:0.15em;
+    text-decoration:none; cursor:pointer;
+  }
+  #classic-link:active { color:#fff; }
 </style>
 </head>
 <body>
@@ -110,7 +113,7 @@
       <div>NEXT</div>
       <div id="next-queue"></div>
     </div>
-    <div id="launcher"><div class="q-ball" id="launcher-ball"></div></div>
+    <div id="launcher"><div class="q-ball" id="launcher-ball"></div><div id="launcher-name"></div></div>
     <div id="right-area">
       <div id="record-label">RECORD&nbsp;&nbsp;0</div>
       <div id="music-btn">&#9834;&nbsp;OFF</div>
@@ -120,11 +123,14 @@
 </div>
 
 <div id="overlay">
-  <h1 id="overlay-title">JUST&nbsp;POP&nbsp;IT</h1>
+  <h1>SOLAR</h1>
   <div class="stats" id="overlay-stats" style="display:none"></div>
-  <div class="hint" id="overlay-hint" style="display:none"></div>
+  <div class="hint" id="overlay-hint">
+    같은 행성끼리 부딪히면 한 단계 작은 행성이 됩니다.<br>
+    달끼리 부딪히면 소멸! 레벨이 오르면 큰 행성이 해금됩니다.
+  </div>
   <button id="start-btn">START</button>
-  <a href="solar.html" style="color:#6c7171;font-size:clamp(13px,3.8vw,16px);letter-spacing:0.15em;text-decoration:none;">SOLAR&nbsp;MODE&nbsp;&#9728;</a>
+  <a id="classic-link" href="index.html">&#8592;&nbsp;CLASSIC&nbsp;MODE</a>
 </div>
 
 <script>
@@ -137,16 +143,29 @@ if('serviceWorker' in navigator){
 </script>
 <script>
 (function(){
-  // ───────── 기본 설정 ─────────
-  const COLORS = ['#00e5ff','#39ff14','#ffe600','#ff9100','#ff1744','#ff3df0','#2979ff','#ececec'];
-  const BALL_START_NUM = 3;
-  const DECEL = 0.075;             // 선형 감속: 일정하게 미끄러지다 딱 멈춤 (당구 느낌)
+  // ───────── 행성 정의 (크기 순) ─────────
+  // size: 기본 반지름 배율 / 같은 행성끼리 부딪히면 tier-1로 축소, tier 0(달)끼리는 소멸
+  const PLANETS=[
+    {name:'달',     color:'#ececec', size:0.62},
+    {name:'수성',   color:'#9fb4c7', size:0.72},
+    {name:'화성',   color:'#ff1744', size:0.82},
+    {name:'금성',   color:'#ffe600', size:0.95},
+    {name:'지구',   color:'#2979ff', size:1.08},
+    {name:'해왕성', color:'#00e5ff', size:1.22},
+    {name:'천왕성', color:'#39ff14', size:1.38},
+    {name:'토성',   color:'#ff9100', size:1.62, ring:true},
+    {name:'목성',   color:'#ff3df0', size:1.88},
+    {name:'태양',   color:'#ffd23b', size:2.25, sun:true}
+  ];
+
+  const FRICTION_KEEP = 0.988;
+  const FRICTION_SUB = 0.028;
   const STOP_SPEED = 0.05;
-  const RESTITUTION = 1.25;        // 1보다 크게: 부딪힌 공이 서로 튕겨나가는 탄력
+  const RESTITUTION = 1.25;
   const WALL_BOUNCE = 0.95;
-  const MAX_POWER = 13;            // 발사 최대 속도
-  const POP_RANGE = 1.45;          // 같은 색은 이 배율 거리 안으로 가까워지면 터짐
-  const POP_TICK = 20;             // 붙어 있는 같은 색이 연속으로 터지는 간격 (프레임)
+  const MAX_POWER = 13;
+  const POP_RANGE = 1.3;       // 같은 행성 근접 판정 배율
+  const POP_TICK = 22;
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -157,7 +176,7 @@ if('serviceWorker' in navigator){
   const menuBtn = document.getElementById('menu-btn');
   const musicBtn = document.getElementById('music-btn');
   const overlay = document.getElementById('overlay');
-  const overlayTitle = document.getElementById('overlay-title');
+  const overlayTitle = document.querySelector('#overlay h1');
   const overlayStats = document.getElementById('overlay-stats');
   const overlayHint = document.getElementById('overlay-hint');
   const startBtn = document.getElementById('start-btn');
@@ -169,47 +188,15 @@ if('serviceWorker' in navigator){
     W = rect.width; H = rect.height;
     canvas.width = W*DPR; canvas.height = H*DPR;
     ctx.setTransform(DPR,0,0,DPR,0,0);
-    BALL_R = Math.max(14, Math.min(W,H)*0.042);
+    BALL_R = Math.max(13, Math.min(W,H)*0.040);
   }
   window.addEventListener('resize', resize);
   resize();
 
-  // ───────── 별가루 + 모눈 배경 ─────────
-  let stars=[];
-  function makeStars(){
-    stars=[];
-    const n = Math.floor(W*H/2600);
-    for(let i=0;i<n;i++){
-      stars.push({x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.3+0.3, a:Math.random()*0.7+0.15});
-    }
-  }
-  makeStars();
-  window.addEventListener('resize', makeStars);
-
-  function drawBackground(){
-    ctx.fillStyle='#050505';
-    ctx.fillRect(0,0,W,H);
-    // 모눈
-    ctx.strokeStyle='rgba(255,255,255,0.07)';
-    ctx.lineWidth=1;
-    const g=18;
-    ctx.beginPath();
-    for(let x=0;x<=W;x+=g){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
-    for(let y=0;y<=H;y+=g){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
-    ctx.stroke();
-    // 별
-    for(const s of stars){
-      ctx.globalAlpha=s.a;
-      ctx.fillStyle='#fff';
-      ctx.fillRect(s.x, s.y, s.r, s.r);
-    }
-    ctx.globalAlpha=1;
-  }
-
-  // ───────── 사운드 ─────────
+  // ───────── 사운드 / 음악 (Gymnopédie 로파이) ─────────
   let audioCtx=null;
-  let sfxOn=true;      // ♪ 버튼으로 음악과 함께 꺼짐
-  const SFX_VOL=0.4;   // 효과음 전체 볼륨 (배경음악이 잘 들리도록 낮춤)
+  let sfxOn=true;
+  const SFX_VOL=0.4;
   function sound(freq, dur, type, vol){
     if(!sfxOn) return;
     try{
@@ -225,15 +212,11 @@ if('serviceWorker' in navigator){
     }catch(e){}
   }
 
-  // ───────── 배경음악: Gymnopédie No.1 (Erik Satie, 1888 — 저작권 소멸) 로파이 편곡 ─────────
-  // 3/4박. 베이스(1박) + 떠 있는 코드(2-3박)가 두 화음으로 교차하고, 그 위에 멜로디가 흐름.
   const bgm=(function(){
     let ac=null, master=null, timer=null, nextBar=0, barIdx=0, on=false;
     const BPM=64, BEAT=60/BPM, BAR=3*BEAT;
-    // 반주: G화음 마디와 D화음 마디가 교대로 흔들림
-    const accA={bass:43, ch:[59,62,66]};   // G + (B D F#)
-    const accB={bass:38, ch:[57,61,66]};   // D + (A C# F#)
-    // 멜로디 (12마디 루프): [박자, 음, 길이(박)]
+    const accA={bass:43, ch:[59,62,66]};
+    const accB={bass:38, ch:[57,61,66]};
     const REST=[];
     const mel=[
       REST, REST,
@@ -254,7 +237,6 @@ if('serviceWorker' in navigator){
       const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2000; lp.Q.value=0.4;
       master=ac.createGain(); master.gain.value=0;
       master.connect(lp); lp.connect(ac.destination);
-      // 빈티지 LP 노이즈 (자글자글)
       const len=ac.sampleRate*2;
       const buf=ac.createBuffer(1,len,ac.sampleRate);
       const d=buf.getChannelData(0);
@@ -276,17 +258,14 @@ if('serviceWorker' in navigator){
     }
     function scheduleBar(t,idx){
       const acc=(idx%2===0)?accA:accB;
-      // 1박: 베이스
       tone(acc.bass, t, BAR*0.95, 'sine', 0.10, 0.04);
-      // 2박: 코드 (살짝 스트럼처럼 어긋나게)
       acc.ch.forEach((m,i)=>{
         tone(m, t+BEAT+i*0.035, BEAT*1.9, 'sine', 0.045, 0.08);
       });
-      // 멜로디
       const bar=mel[idx%mel.length];
       for(const [b,m,len] of bar){
         tone(m, t+b*BEAT, len*BEAT*1.05, 'sine', 0.105, 0.05);
-        tone(m+12, t+b*BEAT, len*BEAT, 'sine', 0.018, 0.05);  // 옥타브 위 잔향 살짝
+        tone(m+12, t+b*BEAT, len*BEAT, 'sine', 0.018, 0.05);
       }
     }
     function loop(){
@@ -321,34 +300,41 @@ if('serviceWorker' in navigator){
   // ───────── 게임 상태 ─────────
   let balls=[], particles=[];
   let level=1, popped=0, until=5, record=0;
-  let queue=[];           // queue[0]=발사대 공, queue[1..3]=NEXT
+  let queue=[];          // queue[0]=발사대, [1..3]=NEXT (행성 tier 번호)
   let running=false;
   let aiming=false, aimX=0, aimY=0;
-  let pairCooldown = new Map();   // 같은 색 연속 팝 간격 관리
+  let pairCooldown = new Map();
   let flashLevel=0;
   let ballSeq=0;
 
-  function quotaFor(lv){ return lv*5; } // 5, 10, 15, 20... (원작)
-  function colorPool(){ return COLORS.slice(0, Math.min(level, COLORS.length)); }
-  function randColor(){ const p=colorPool(); return p[Math.floor(Math.random()*p.length)]; }
+  function quotaFor(lv){ return lv*5; }
+  function maxTier(){ return Math.min(level, PLANETS.length)-1; }
+  function randTier(){ return Math.floor(Math.random()*(maxTier()+1)); }
+  function radiusOf(tier){ return BALL_R*PLANETS[tier].size; }
+  function massOf(tier){ const r=PLANETS[tier].size; return r*r*r; }   // 부피 기준: 태양 vs 달 = 약 48배
 
   function refillQueue(){
-    while(queue.length<4) queue.push(randColor());
+    while(queue.length<4) queue.push(randTier());
     renderQueue();
   }
+  function qBallStyle(el, tier, px){
+    const p=PLANETS[tier];
+    el.style.width=px+'px';
+    el.style.height=px+'px';
+    el.style.border='2px solid '+p.color;
+    el.style.boxShadow='0 0 6px '+p.color+', inset 0 0 5px '+p.color;
+  }
   function renderQueue(){
-    launcherBallEl.style.border='2px solid '+queue[0];
-    launcherBallEl.style.color=queue[0];
-    launcherBallEl.style.boxShadow='0 0 8px '+queue[0]+', inset 0 0 6px '+queue[0];
-    launcherBallEl.textContent=BALL_START_NUM;
+    qBallStyle(launcherBallEl, queue[0], Math.round(18+PLANETS[queue[0]].size*8));
+    launcherBallEl.textContent='';
+    const ln=document.getElementById('launcher-name');
+    ln.textContent=PLANETS[queue[0]].name;
+    ln.style.color=PLANETS[queue[0]].color;
     nextQueueEl.innerHTML='';
     for(let i=1;i<4;i++){
       const d=document.createElement('div');
       d.className='q-ball';
-      d.style.border='2px solid '+queue[i];
-      d.style.color=queue[i];
-      d.style.boxShadow='0 0 6px '+queue[i]+', inset 0 0 5px '+queue[i];
-      d.textContent=BALL_START_NUM;
+      qBallStyle(d, queue[i], Math.round(14+PLANETS[queue[i]].size*8));
       nextQueueEl.appendChild(d);
     }
   }
@@ -357,22 +343,22 @@ if('serviceWorker' in navigator){
     recordLabel.innerHTML='RECORD&nbsp;&nbsp;'+record;
   }
 
-  // ── 점수 영구 저장 (홈 화면 앱에서는 껐다 켜도 유지) ──
+  // ── 기록 저장 (SOLAR 전용 키) ──
   function loadRecord(){
-    try{ record = parseInt(localStorage.getItem('jpi-record')) || 0; }
+    try{ record = parseInt(localStorage.getItem('solar-record')) || 0; }
     catch(e){ record = 0; }
   }
   function loadHistory(){
-    try{ return JSON.parse(localStorage.getItem('jpi-history')) || []; }
+    try{ return JSON.parse(localStorage.getItem('solar-history')) || []; }
     catch(e){ return []; }
   }
   function saveScore(){
     try{
-      localStorage.setItem('jpi-record', String(record));
+      localStorage.setItem('solar-record', String(record));
       const h = loadHistory();
       h.push({ s: popped, l: level, d: new Date().toISOString().slice(0,10) });
       h.sort((x,y)=>y.s-x.s);
-      localStorage.setItem('jpi-history', JSON.stringify(h.slice(0,5)));
+      localStorage.setItem('solar-history', JSON.stringify(h.slice(0,5)));
     }catch(e){}
   }
 
@@ -391,22 +377,23 @@ if('serviceWorker' in navigator){
     const mag = Math.hypot(dx,dy);
     if(mag<0.001) return;
     const lp = launcherPos();
-    const v = Math.min(power, MAX_POWER);
+    const tier=queue[0];
+    const r=radiusOf(tier);
+    // 무게 반영: 같은 힘이라도 무거운 행성은 느리게 출발 (달은 쌩, 태양은 묵직하게)
+    const heavy = 1/Math.pow(PLANETS[tier].size, 0.85);
+    const v = Math.min(power, MAX_POWER) * heavy;
     balls.push({
       id: ballSeq++,
-      x: lp.x, y: lp.y - BALL_R,
+      x: lp.x, y: lp.y - r,
       vx: dx/mag*v, vy: dy/mag*v,
-      r: BALL_R, n: BALL_START_NUM,
-      color: queue[0],
-      armed: false,   // 발사 구역을 벗어난 뒤부터 아래 라인 판정
-      dead: false
+      tier: tier, r: r,
+      armed: false, dead: false
     });
     queue.shift();
     refillQueue();
     sound(220, 0.1, 'triangle', 0.12);
   }
 
-  // ───────── 입력 (조준: 흰 원 + 조준선) ─────────
   fieldBox.addEventListener('pointerdown', e=>{
     if(!running) return;
     const r = fieldBox.getBoundingClientRect();
@@ -423,25 +410,26 @@ if('serviceWorker' in navigator){
     aiming=false;
     const lp = launcherPos();
     const dx = aimX-lp.x, dy = aimY-lp.y;
-    if(dy>=-10) return; // 위쪽 방향만 발사
+    if(dy>=-10) return;
     const dist = Math.hypot(dx,dy);
-    const power = dist/H * MAX_POWER * 2.1; // 터치가 멀수록 강하게
+    const power = dist/H * MAX_POWER * 2.1;
     fire(dx, dy, power);
   }
   window.addEventListener('pointerup', endAim);
   window.addEventListener('pointercancel', ()=>{aiming=false;});
 
-  // ───────── 게임 규칙 ─────────
-  function decrement(b){
-    b.n--;
+  // ───────── 규칙: 같은 행성 → 한 단계 축소, 달끼리 → 소멸 ─────────
+  function shrink(b){
     popped++; until--;
     if(popped>record) record=popped;
-    if(b.n<=0){
+    if(b.tier===0){
       burst(b);
       b.dead=true;
-      sound(520, 0.16, 'sine', 0.2);
+      sound(560, 0.16, 'sine', 0.2);
     }else{
-      sound(330, 0.07, 'square', 0.07);
+      b.tier--;
+      b.r=radiusOf(b.tier);
+      sound(330+b.tier*20, 0.08, 'square', 0.07);
     }
   }
 
@@ -455,13 +443,13 @@ if('serviceWorker' in navigator){
   }
 
   function burst(b){
-    for(let i=0;i<26;i++){
+    const p=PLANETS[b.tier];
+    const n=Math.floor(16+b.r);
+    for(let i=0;i<n;i++){
       const a=Math.random()*Math.PI*2, s=0.8+Math.random()*3;
-      particles.push({x:b.x,y:b.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-0.4,life:1,size:1+Math.random()*2.6,color:b.color});
+      particles.push({x:b.x,y:b.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-0.4,life:1,size:1+Math.random()*2.6,color:p.color});
     }
   }
-
-  // 충돌/팝 불꽃 (사진 속 반짝이 가루 느낌)
   function sparks(x,y,color,count,speed){
     for(let i=0;i<count;i++){
       const a=Math.random()*Math.PI*2, s=speed*(0.3+Math.random());
@@ -482,44 +470,37 @@ if('serviceWorker' in navigator){
     overlayStats.innerHTML='POPPED&nbsp;&nbsp;'+popped+'&nbsp;&nbsp;·&nbsp;&nbsp;LEVEL&nbsp;&nbsp;'+level
       +'<br><br><span style="letter-spacing:0.25em">TOP&nbsp;5</span><br>'+rows;
     overlayHint.style.display='block';
-    overlayHint.textContent='공이 아래 라인을 넘어갔습니다.';
+    overlayHint.textContent='행성이 아래 라인을 넘어갔습니다.';
     startBtn.textContent='RETRY';
     overlay.classList.remove('hidden');
     sound(140, 0.5, 'sawtooth', 0.18);
   }
 
-  // ───────── 물리 ─────────
+  // ───────── 물리 (질량 기반) ─────────
   function physics(){
-    // 팝 간격 쿨다운 감소 (프레임당 1회)
     for(const [k,v] of pairCooldown){
       if(v<=1) pairCooldown.delete(k);
       else pairCooldown.set(k, v-1);
     }
 
-    // ── 서브스텝: 한 프레임을 잘게 쪼개 빠른 공도 충돌을 놓치지 않게 ──
     const SUB = 4;
     for(let s=0; s<SUB; s++){
-      // 이동 + 벽 + 게임오버 판정
       for(const b of balls){
         b.x += b.vx/SUB;
         b.y += b.vy/SUB;
 
-        // 벽 반사 (좌/우/상)
         if(b.x<b.r){ b.x=b.r; b.vx=Math.abs(b.vx)*WALL_BOUNCE; }
         if(b.x>W-b.r){ b.x=W-b.r; b.vx=-Math.abs(b.vx)*WALL_BOUNCE; }
         if(b.y<b.r){ b.y=b.r; b.vy=Math.abs(b.vy)*WALL_BOUNCE; }
 
-        // 발사 구역을 벗어나면 아래 라인 판정 활성화
         if(!b.armed && b.y < H - BALL_R*3.2) b.armed=true;
 
-        // 게임 오버: 공이 라인을 완전히 넘어갔을 때 (걸치는 건 세이프)
         if(b.armed && b.y - b.r >= H){
           endGame();
           return;
         }
       }
 
-      // 충돌 (팝 + 운동량 + 불꽃)
       for(let i=0;i<balls.length;i++){
         for(let j=i+1;j<balls.length;j++){
           const a=balls[i], c=balls[j];
@@ -528,16 +509,17 @@ if('serviceWorker' in navigator){
           const dist=Math.hypot(dx,dy), minD=a.r+c.r;
           const popD=minD*POP_RANGE;
 
-          // 같은 색: 가까이 있는 동안 일정 간격으로 계속 터짐 (연속 팝)
-          if(dist<popD && a.color===c.color){
+          // 같은 행성: 가까이 있는 동안 일정 간격으로 계속 축소
+          if(dist<popD && a.tier===c.tier){
             const key=a.id+'-'+c.id;
             if(!pairCooldown.has(key)){
-              decrement(a); decrement(c);
-              sparks((a.x+c.x)/2, (a.y+c.y)/2, a.color, 16, 2.6);
+              const col=PLANETS[a.tier].color;
+              sparks((a.x+c.x)/2, (a.y+c.y)/2, col, 16, 2.6);
               sparks((a.x+c.x)/2, (a.y+c.y)/2, '#ffffff', 6, 1.8);
-              // 터지는 반동: 두 공이 서로 밀려남 (남은 공도 움직이게)
+              shrink(a); shrink(c);
               if(dist>0.0001){
-                const knx=dx/dist, kny=dy/dist, kn=1.5;
+                const knx=dx/dist, kny=dy/dist;
+                const kn=1.5/PLANETS[Math.max(0,a.tier)].size;   // 무거울수록 반동 작게
                 a.vx-=knx*kn; a.vy-=kny*kn;
                 c.vx+=knx*kn; c.vy+=kny*kn;
               }
@@ -547,28 +529,29 @@ if('serviceWorker' in navigator){
           }
 
           if(dist<minD && dist>0.0001){
-            // 겹침 보정
-            const overlap=(minD-dist)/2;
             const nx=dx/dist, ny=dy/dist;
-            a.x-=nx*overlap; a.y-=ny*overlap;
-            c.x+=nx*overlap; c.y+=ny*overlap;
+            const m1=massOf(a.tier), m2=massOf(c.tier);
+            const total=m1+m2;
+            const overlap=(minD-dist);
+            // 가벼운 쪽이 더 밀려남
+            a.x-=nx*overlap*(m2/total); a.y-=ny*overlap*(m2/total);
+            c.x+=nx*overlap*(m1/total); c.y+=ny*overlap*(m1/total);
 
-            // 운동량 전달 (정면으로 치면 맞은 공이 속도를 거의 다 가져감)
+            // 질량 기반 충격량: 무거운 행성은 덜 흔들리고 가벼운 행성은 팽 튕김
             const rel=(c.vx-a.vx)*nx+(c.vy-a.vy)*ny;
             if(rel<0){
-              const jval=rel*(1+RESTITUTION)/2;
-              a.vx+=jval*nx;
-              a.vy+=jval*ny;
-              c.vx-=jval*nx;
-              c.vy-=jval*ny;
+              const jimp=(1+RESTITUTION)*rel/(1/m1+1/m2);
+              a.vx+=jimp*nx/m1;
+              a.vy+=jimp*ny/m1;
+              c.vx-=jimp*nx/m2;
+              c.vy-=jimp*ny/m2;
 
-              // 부딪히는 세기에 비례한 불꽃 (다른 색끼리도)
               const impact=-rel;
               if(impact>0.6){
                 const cx=(a.x+c.x)/2, cy=(a.y+c.y)/2;
                 const cnt=Math.min(14, Math.floor(impact*3));
-                sparks(cx, cy, a.color, cnt, impact*0.5);
-                sparks(cx, cy, c.color, cnt, impact*0.5);
+                sparks(cx, cy, PLANETS[a.tier].color, cnt, impact*0.5);
+                sparks(cx, cy, PLANETS[c.tier].color, cnt, impact*0.5);
               }
             }
           }
@@ -577,17 +560,15 @@ if('serviceWorker' in navigator){
       balls=balls.filter(b=>!b.dead);
     }
 
-    // ── 감속: 빠를 땐 크게, 느릴 땐 작게 깎여서 상→하로 자연스럽게 죽음 ──
     for(const b of balls){
       const sp = Math.hypot(b.vx,b.vy);
       if(sp>0){
-        const ns = Math.max(0, sp*0.988 - 0.028);
+        const ns = Math.max(0, sp*FRICTION_KEEP - FRICTION_SUB);
         if(ns<STOP_SPEED){ b.vx=0; b.vy=0; }
         else { b.vx=b.vx/sp*ns; b.vy=b.vy/sp*ns; }
       }
     }
 
-    // 겹침 해소 추가 패스: 공이 3개 이상 뭉쳤을 때도 깔끔하게 떨어지도록 반복 분리
     for(let pass=0; pass<4; pass++){
       let any=false;
       for(let i=0;i<balls.length;i++){
@@ -604,7 +585,6 @@ if('serviceWorker' in navigator){
             const overlap=(minD-dist)/2 + 0.2;
             a.x-=nx*overlap; a.y-=ny*overlap;
             c.x+=nx*overlap; c.y+=ny*overlap;
-            // 벽 밖으로 밀려나지 않게 클램프 (아래쪽은 게임오버 판정 유지 위해 제외)
             a.x=Math.max(a.r, Math.min(W-a.r, a.x)); if(a.y<a.r) a.y=a.r;
             c.x=Math.max(c.r, Math.min(W-c.r, c.x)); if(c.y<c.r) c.y=c.r;
           }
@@ -616,23 +596,96 @@ if('serviceWorker' in navigator){
   }
 
   // ───────── 그리기 ─────────
+  function drawHUD(){
+    ctx.save();
+    ctx.globalAlpha=0.42;
+    ctx.fillStyle='#5e6363';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    const labelSize=Math.min(W*0.058, 24);
+    const valueSize=Math.min(W*0.17, 80);
+    const blocks=[
+      ['LEVEL', level, H*0.17],
+      ['POPPED', popped, H*0.5],
+      ['UNTIL NEXT LEVEL', until, H*0.83]
+    ];
+    for(const [label, value, cy] of blocks){
+      ctx.font=labelSize+'px "Special Elite", monospace';
+      ctx.fillText(label, W/2, cy - valueSize*0.62);
+      ctx.font=valueSize+'px "Special Elite", monospace';
+      ctx.fillText(value, W/2, cy + labelSize*0.55);
+    }
+    ctx.restore();
+  }
+
+  let stars=[];
+  function makeStars(){
+    stars=[];
+    const n = Math.floor(W*H/2600);
+    for(let i=0;i<n;i++){
+      stars.push({x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.3+0.3, a:Math.random()*0.7+0.15});
+    }
+  }
+  makeStars();
+  window.addEventListener('resize', makeStars);
+
+  function drawBackground(){
+    ctx.fillStyle='#050505';
+    ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(255,255,255,0.07)';
+    ctx.lineWidth=1;
+    const g=18;
+    ctx.beginPath();
+    for(let x=0;x<=W;x+=g){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
+    for(let y=0;y<=H;y+=g){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
+    ctx.stroke();
+    for(const s of stars){
+      ctx.globalAlpha=s.a;
+      ctx.fillStyle='#fff';
+      ctx.fillRect(s.x, s.y, s.r, s.r);
+    }
+    ctx.globalAlpha=1;
+  }
+
   function drawBall(b){
+    const p=PLANETS[b.tier];
     ctx.save();
     ctx.translate(b.x,b.y);
-    ctx.shadowColor=b.color;
-    ctx.shadowBlur=10;
+    // 토성 고리
+    if(p.ring){
+      ctx.save();
+      ctx.rotate(-0.45);
+      ctx.strokeStyle=p.color;
+      ctx.globalAlpha=0.55;
+      ctx.lineWidth=2;
+      ctx.beginPath();
+      ctx.ellipse(0,0,b.r*1.55,b.r*0.5,0,0,Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.shadowColor=p.color;
+    ctx.shadowBlur=p.sun?22:10;
     ctx.beginPath();
     ctx.arc(0,0,b.r,0,Math.PI*2);
     ctx.fillStyle='rgba(0,0,0,0.85)';
     ctx.fill();
-    ctx.lineWidth=2.4;
-    ctx.strokeStyle=b.color;
+    ctx.lineWidth=p.sun?3.4:2.4;
+    ctx.strokeStyle=p.color;
     ctx.stroke();
-    ctx.shadowBlur=6;
-    ctx.fillStyle=b.color;
-    ctx.font=(b.r*1.1)+'px "Special Elite", monospace';
+    // 태양 내부 링
+    if(p.sun){
+      ctx.beginPath();
+      ctx.arc(0,0,b.r*0.62,0,Math.PI*2);
+      ctx.globalAlpha=0.6;
+      ctx.stroke();
+      ctx.globalAlpha=1;
+    }
+    // 행성 이름 (작게)
+    ctx.shadowBlur=4;
+    ctx.fillStyle=p.color;
+    ctx.font=Math.max(9, b.r*0.42)+'px -apple-system, "Apple SD Gothic Neo", sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(b.n, 0, 2);
+    ctx.fillText(p.name, 0, 1);
     ctx.restore();
   }
 
@@ -652,7 +705,6 @@ if('serviceWorker' in navigator){
     ctx.moveTo(lp.x, lp.y);
     ctx.lineTo(lp.x+dx/mag*ext, lp.y+dy/mag*ext);
     ctx.stroke();
-    // 터치 위치 흰 원
     ctx.beginPath();
     ctx.arc(aimX, aimY, 34, 0, Math.PI*2);
     ctx.fillStyle='rgba(255,255,255,0.45)';
@@ -681,30 +733,8 @@ if('serviceWorker' in navigator){
     ctx.font=Math.min(W*0.12,44)+'px "Special Elite", monospace';
     ctx.textAlign='center';
     ctx.shadowColor='#fff'; ctx.shadowBlur=16;
-    ctx.fillText('LEVEL '+level, W/2, H*0.5);
-    ctx.restore();
-  }
-
-  // HUD를 캔버스 배경에 흐릿한 워터마크로 그림 → 공이 항상 또렷하게 보임
-  function drawHUD(){
-    ctx.save();
-    ctx.globalAlpha=0.42;
-    ctx.fillStyle='#5e6363';
-    ctx.textAlign='center';
-    ctx.textBaseline='middle';
-    const labelSize=Math.min(W*0.058, 24);
-    const valueSize=Math.min(W*0.17, 80);
-    const blocks=[
-      ['LEVEL', level, H*0.17],
-      ['POPPED', popped, H*0.5],
-      ['UNTIL NEXT LEVEL', until, H*0.83]
-    ];
-    for(const [label, value, cy] of blocks){
-      ctx.font=labelSize+'px "Special Elite", monospace';
-      ctx.fillText(label, W/2, cy - valueSize*0.62);
-      ctx.font=valueSize+'px "Special Elite", monospace';
-      ctx.fillText(value, W/2, cy + labelSize*0.55);
-    }
+    const t = level<=PLANETS.length ? 'LEVEL '+level+' · '+PLANETS[Math.min(level,PLANETS.length)-1].name+' 해금' : 'LEVEL '+level;
+    ctx.fillText(t, W/2, H*0.5);
     ctx.restore();
   }
 
@@ -736,15 +766,15 @@ if('serviceWorker' in navigator){
   });
   musicBtn.addEventListener('click', ()=>{
     const o=bgm.toggle();
-    sfxOn=o;   // 끄면 게임 소리 전체가 꺼짐
+    sfxOn=o;
     musicBtn.innerHTML = o ? '&#9834;&nbsp;ON' : '&#9834;&nbsp;OFF';
   });
   menuBtn.addEventListener('click', ()=>{
     running=false;
-    overlayTitle.textContent='JUST POP IT';
+    overlayTitle.textContent='SOLAR';
     overlayStats.style.display='none';
-    overlayHint.style.display='none';
-    overlayHint.innerHTML='';
+    overlayHint.style.display='block';
+    overlayHint.innerHTML='같은 행성끼리 부딪히면 한 단계 작은 행성이 됩니다.<br>달끼리 부딪히면 소멸! 레벨이 오르면 큰 행성이 해금됩니다.';
     startBtn.textContent='START';
     overlay.classList.remove('hidden');
   });

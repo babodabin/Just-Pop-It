@@ -1,8 +1,9 @@
 // Just Pop It — 오프라인 캐시
-const CACHE = 'jpi-v8';
+const CACHE = 'jpi-v11';
 const ASSETS = [
   './',
   './index.html',
+  './solar.html',
   './manifest.json',
   './icon-180.png',
   './icon-192.png',
