@@ -55,8 +55,8 @@
     font-size:17px; background:#000;
   }
   #right-area { text-align:right; display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
-  #menu-btn { cursor:pointer; }
-  #menu-btn:active { color:#fff; }
+  #menu-btn, #music-btn { cursor:pointer; }
+  #menu-btn:active, #music-btn:active { color:#fff; }
 
   /* 발사대 (하단 중앙) */
   #launcher {
@@ -113,6 +113,7 @@
     <div id="launcher"><div class="q-ball" id="launcher-ball"></div></div>
     <div id="right-area">
       <div id="record-label">RECORD&nbsp;&nbsp;0</div>
+      <div id="music-btn">&#9834;&nbsp;OFF</div>
       <div id="menu-btn">BACK&nbsp;TO&nbsp;MENU</div>
     </div>
   </div>
@@ -121,11 +122,7 @@
 <div id="overlay">
   <h1 id="overlay-title">JUST&nbsp;POP&nbsp;IT</h1>
   <div class="stats" id="overlay-stats" style="display:none"></div>
-  <div class="hint" id="overlay-hint">
-    터치한 채로 방향을 잡고 손을 떼면 공이 발사됩니다.<br>
-    같은 색끼리 부딪히면 숫자가 줄고, 0이 되면 터집니다.<br>
-    어떤 공이든 아래 라인에 닿으면 게임 오버!
-  </div>
+  <div class="hint" id="overlay-hint" style="display:none"></div>
   <button id="start-btn">START</button>
 </div>
 
@@ -140,7 +137,7 @@ if('serviceWorker' in navigator){
 <script>
 (function(){
   // ───────── 기본 설정 ─────────
-  const COLORS = ['#2ee6e6','#ff4040','#ffd23b','#46ff7d','#c84bff','#ff8c3b','#ff4bd0','#5a9bff'];
+  const COLORS = ['#00e5ff','#39ff14','#ffe600','#ff9100','#ff1744','#ff3df0','#2979ff','#ececec'];
   const BALL_START_NUM = 3;
   const DECEL = 0.075;             // 선형 감속: 일정하게 미끄러지다 딱 멈춤 (당구 느낌)
   const STOP_SPEED = 0.05;
@@ -157,6 +154,7 @@ if('serviceWorker' in navigator){
   const launcherBallEl = document.getElementById('launcher-ball');
   const recordLabel = document.getElementById('record-label');
   const menuBtn = document.getElementById('menu-btn');
+  const musicBtn = document.getElementById('music-btn');
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlay-title');
   const overlayStats = document.getElementById('overlay-stats');
@@ -209,19 +207,115 @@ if('serviceWorker' in navigator){
 
   // ───────── 사운드 ─────────
   let audioCtx=null;
+  let sfxOn=true;      // ♪ 버튼으로 음악과 함께 꺼짐
+  const SFX_VOL=0.4;   // 효과음 전체 볼륨 (배경음악이 잘 들리도록 낮춤)
   function sound(freq, dur, type, vol){
+    if(!sfxOn) return;
     try{
       if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
       const o=audioCtx.createOscillator(), g=audioCtx.createGain();
       o.type=type||'sine';
       o.frequency.setValueAtTime(freq, audioCtx.currentTime);
       o.frequency.exponentialRampToValueAtTime(Math.max(60,freq*0.4), audioCtx.currentTime+dur);
-      g.gain.setValueAtTime(vol||0.15, audioCtx.currentTime);
+      g.gain.setValueAtTime((vol||0.15)*SFX_VOL, audioCtx.currentTime);
       g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+dur);
       o.connect(g); g.connect(audioCtx.destination);
       o.start(); o.stop(audioCtx.currentTime+dur+0.02);
     }catch(e){}
   }
+
+  // ───────── 배경음악: Gymnopédie No.1 (Erik Satie, 1888 — 저작권 소멸) 로파이 편곡 ─────────
+  // 3/4박. 베이스(1박) + 떠 있는 코드(2-3박)가 두 화음으로 교차하고, 그 위에 멜로디가 흐름.
+  const bgm=(function(){
+    let ac=null, master=null, timer=null, nextBar=0, barIdx=0, on=false;
+    const BPM=64, BEAT=60/BPM, BAR=3*BEAT;
+    // 반주: G화음 마디와 D화음 마디가 교대로 흔들림
+    const accA={bass:43, ch:[59,62,66]};   // G + (B D F#)
+    const accB={bass:38, ch:[57,61,66]};   // D + (A C# F#)
+    // 멜로디 (12마디 루프): [박자, 음, 길이(박)]
+    const REST=[];
+    const mel=[
+      REST, REST,
+      [[0,78,1],[1,81,1],[2,79,1]],
+      [[0,78,1],[1,73,1],[2,71,1]],
+      [[0,73,1],[1,74,1],[2,69,1]],
+      [[0,66,3]],
+      [[0,78,1],[1,81,1],[2,79,1]],
+      [[0,78,1],[1,73,1],[2,71,1]],
+      [[0,73,1],[1,74,1],[2,69,1]],
+      [[0,69,3]],
+      REST, REST
+    ];
+    const f=m=>440*Math.pow(2,(m-69)/12);
+    function ensure(){
+      if(ac) return;
+      ac=new (window.AudioContext||window.webkitAudioContext)();
+      const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2000; lp.Q.value=0.4;
+      master=ac.createGain(); master.gain.value=0;
+      master.connect(lp); lp.connect(ac.destination);
+      // 빈티지 LP 노이즈 (자글자글)
+      const len=ac.sampleRate*2;
+      const buf=ac.createBuffer(1,len,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<len;i++){ d[i]=(Math.random()*2-1)*(Math.random()<0.012?0.5:0.018); }
+      const ns=ac.createBufferSource(); ns.buffer=buf; ns.loop=true;
+      const hp=ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1400;
+      const ng=ac.createGain(); ng.gain.value=0.055;
+      ns.connect(hp); hp.connect(ng); ng.connect(master);
+      ns.start();
+    }
+    function tone(midi,t,dur,type,vol,attack){
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.type=type; o.frequency.value=f(midi);
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(vol,t+(attack||0.02));
+      g.gain.exponentialRampToValueAtTime(0.0005,t+dur);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t+dur+0.05);
+    }
+    function scheduleBar(t,idx){
+      const acc=(idx%2===0)?accA:accB;
+      // 1박: 베이스
+      tone(acc.bass, t, BAR*0.95, 'sine', 0.10, 0.04);
+      // 2박: 코드 (살짝 스트럼처럼 어긋나게)
+      acc.ch.forEach((m,i)=>{
+        tone(m, t+BEAT+i*0.035, BEAT*1.9, 'sine', 0.045, 0.08);
+      });
+      // 멜로디
+      const bar=mel[idx%mel.length];
+      for(const [b,m,len] of bar){
+        tone(m, t+b*BEAT, len*BEAT*1.05, 'sine', 0.105, 0.05);
+        tone(m+12, t+b*BEAT, len*BEAT, 'sine', 0.018, 0.05);  // 옥타브 위 잔향 살짝
+      }
+    }
+    function loop(){
+      while(nextBar<ac.currentTime+0.8){
+        scheduleBar(nextBar,barIdx++);
+        nextBar+=BAR;
+      }
+    }
+    return {
+      toggle(){
+        ensure();
+        if(ac.state==='suspended') ac.resume();
+        on=!on;
+        if(on){
+          nextBar=ac.currentTime+0.1; barIdx=0;
+          master.gain.cancelScheduledValues(ac.currentTime);
+          master.gain.setValueAtTime(master.gain.value, ac.currentTime);
+          master.gain.linearRampToValueAtTime(0.9, ac.currentTime+1.5);
+          timer=setInterval(loop,200); loop();
+        }else{
+          master.gain.cancelScheduledValues(ac.currentTime);
+          master.gain.setValueAtTime(master.gain.value, ac.currentTime);
+          master.gain.linearRampToValueAtTime(0, ac.currentTime+0.6);
+          clearInterval(timer);
+        }
+        return on;
+      },
+      isOn(){ return on; }
+    };
+  })();
 
   // ───────── 게임 상태 ─────────
   let balls=[], particles=[];
@@ -386,6 +480,7 @@ if('serviceWorker' in navigator){
     }
     overlayStats.innerHTML='POPPED&nbsp;&nbsp;'+popped+'&nbsp;&nbsp;·&nbsp;&nbsp;LEVEL&nbsp;&nbsp;'+level
       +'<br><br><span style="letter-spacing:0.25em">TOP&nbsp;5</span><br>'+rows;
+    overlayHint.style.display='block';
     overlayHint.textContent='공이 아래 라인을 넘어갔습니다.';
     startBtn.textContent='RETRY';
     overlay.classList.remove('hidden');
@@ -632,12 +727,23 @@ if('serviceWorker' in navigator){
     overlayStats.style.display='none';
     resize();
     newGame();
+    if(!bgm.isOn()){
+      bgm.toggle();
+      sfxOn=true;
+      musicBtn.innerHTML='&#9834;&nbsp;ON';
+    }
+  });
+  musicBtn.addEventListener('click', ()=>{
+    const o=bgm.toggle();
+    sfxOn=o;   // 끄면 게임 소리 전체가 꺼짐
+    musicBtn.innerHTML = o ? '&#9834;&nbsp;ON' : '&#9834;&nbsp;OFF';
   });
   menuBtn.addEventListener('click', ()=>{
     running=false;
     overlayTitle.textContent='JUST POP IT';
     overlayStats.style.display='none';
-    overlayHint.innerHTML='터치한 채로 방향을 잡고 손을 떼면 공이 발사됩니다.<br>같은 색끼리 부딪히면 숫자가 줄고, 0이 되면 터집니다.<br>어떤 공이든 아래 라인에 닿으면 게임 오버!';
+    overlayHint.style.display='none';
+    overlayHint.innerHTML='';
     startBtn.textContent='START';
     overlay.classList.remove('hidden');
   });
