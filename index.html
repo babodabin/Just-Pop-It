@@ -21,7 +21,12 @@
     touch-action:none; user-select:none; -webkit-user-select:none;
     color:#9a9f9f;
   }
-  #wrap { position:fixed; inset:0; display:flex; flex-direction:column; }
+  #wrap {
+    position:fixed; inset:0; display:flex; flex-direction:column;
+    /* 아이폰 상태바(시계/배터리) 줄은 게임 영역에서 제외 — 최소 52px 확보 */
+    padding-top:max(env(safe-area-inset-top, 0px), 52px);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
 
   /* ── 플레이 필드 ── */
   #field-box {
@@ -32,16 +37,6 @@
     overflow:hidden;
   }
   canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
-
-  /* ── HUD (배경 워터마크) ── */
-  #hud {
-    position:absolute; inset:0; z-index:1; pointer-events:none;
-    display:flex; flex-direction:column; justify-content:space-evenly; align-items:center;
-    color:#7d8282;
-  }
-  .hud-block { text-align:center; line-height:1.05; }
-  .hud-label { font-size:clamp(17px, 5vw, 26px); letter-spacing:0.18em; }
-  .hud-value { font-size:clamp(44px, 14vw, 84px); margin-top:4px; }
 
   /* ── 하단 바 ── */
   #bottom-bar {
@@ -108,11 +103,6 @@
 <body>
 <div id="wrap">
   <div id="field-box">
-    <div id="hud">
-      <div class="hud-block"><div class="hud-label">LEVEL</div><div class="hud-value" id="hud-level">1</div></div>
-      <div class="hud-block"><div class="hud-label">POPPED</div><div class="hud-value" id="hud-popped">0</div></div>
-      <div class="hud-block"><div class="hud-label">UNTIL NEXT LEVEL</div><div class="hud-value" id="hud-until">5</div></div>
-    </div>
     <canvas id="game"></canvas>
   </div>
   <div id="bottom-bar">
@@ -163,9 +153,6 @@ if('serviceWorker' in navigator){
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   const fieldBox = document.getElementById('field-box');
-  const hudLevel = document.getElementById('hud-level');
-  const hudPopped = document.getElementById('hud-popped');
-  const hudUntil = document.getElementById('hud-until');
   const nextQueueEl = document.getElementById('next-queue');
   const launcherBallEl = document.getElementById('launcher-ball');
   const recordLabel = document.getElementById('record-label');
@@ -272,10 +259,26 @@ if('serviceWorker' in navigator){
   }
 
   function updateHUD(){
-    hudLevel.textContent=level;
-    hudPopped.textContent=popped;
-    hudUntil.textContent=until;
     recordLabel.innerHTML='RECORD&nbsp;&nbsp;'+record;
+  }
+
+  // ── 점수 영구 저장 (홈 화면 앱에서는 껐다 켜도 유지) ──
+  function loadRecord(){
+    try{ record = parseInt(localStorage.getItem('jpi-record')) || 0; }
+    catch(e){ record = 0; }
+  }
+  function loadHistory(){
+    try{ return JSON.parse(localStorage.getItem('jpi-history')) || []; }
+    catch(e){ return []; }
+  }
+  function saveScore(){
+    try{
+      localStorage.setItem('jpi-record', String(record));
+      const h = loadHistory();
+      h.push({ s: popped, l: level, d: new Date().toISOString().slice(0,10) });
+      h.sort((x,y)=>y.s-x.s);
+      localStorage.setItem('jpi-history', JSON.stringify(h.slice(0,5)));
+    }catch(e){}
   }
 
   function newGame(){
@@ -373,10 +376,17 @@ if('serviceWorker' in navigator){
 
   function endGame(){
     running=false;
+    saveScore();
     overlayTitle.textContent='GAME OVER';
     overlayStats.style.display='block';
-    overlayStats.innerHTML='POPPED&nbsp;&nbsp;'+popped+'<br>LEVEL&nbsp;&nbsp;'+level+'<br>RECORD&nbsp;&nbsp;'+record;
-    overlayHint.textContent='공이 아래 라인에 닿았습니다.';
+    const h=loadHistory();
+    let rows='';
+    for(let i=0;i<h.length;i++){
+      rows += (i+1)+'.&nbsp;&nbsp;'+h[i].s+'&nbsp;&nbsp;<span style="font-size:0.75em;color:#6c7171">LV '+h[i].l+' · '+h[i].d+'</span><br>';
+    }
+    overlayStats.innerHTML='POPPED&nbsp;&nbsp;'+popped+'&nbsp;&nbsp;·&nbsp;&nbsp;LEVEL&nbsp;&nbsp;'+level
+      +'<br><br><span style="letter-spacing:0.25em">TOP&nbsp;5</span><br>'+rows;
+    overlayHint.textContent='공이 아래 라인을 넘어갔습니다.';
     startBtn.textContent='RETRY';
     overlay.classList.remove('hidden');
     sound(140, 0.5, 'sawtooth', 0.18);
@@ -579,8 +589,32 @@ if('serviceWorker' in navigator){
     ctx.restore();
   }
 
+  // HUD를 캔버스 배경에 흐릿한 워터마크로 그림 → 공이 항상 또렷하게 보임
+  function drawHUD(){
+    ctx.save();
+    ctx.globalAlpha=0.42;
+    ctx.fillStyle='#5e6363';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    const labelSize=Math.min(W*0.058, 24);
+    const valueSize=Math.min(W*0.17, 80);
+    const blocks=[
+      ['LEVEL', level, H*0.17],
+      ['POPPED', popped, H*0.5],
+      ['UNTIL NEXT LEVEL', until, H*0.83]
+    ];
+    for(const [label, value, cy] of blocks){
+      ctx.font=labelSize+'px "Special Elite", monospace';
+      ctx.fillText(label, W/2, cy - valueSize*0.62);
+      ctx.font=valueSize+'px "Special Elite", monospace';
+      ctx.fillText(value, W/2, cy + labelSize*0.55);
+    }
+    ctx.restore();
+  }
+
   function loop(){
     drawBackground();
+    drawHUD();
     if(running) physics();
     drawAim();
     for(const b of balls) drawBall(b);
@@ -591,6 +625,8 @@ if('serviceWorker' in navigator){
   loop();
 
   // ───────── 메뉴 ─────────
+  loadRecord();
+  updateHUD();
   startBtn.addEventListener('click', ()=>{
     overlay.classList.add('hidden');
     overlayStats.style.display='none';
