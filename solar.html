@@ -71,7 +71,7 @@
   #overlay {
     position:fixed; inset:0; z-index:10;
     display:flex; flex-direction:column; justify-content:center; align-items:center; gap:20px;
-    background:rgba(0,0,0,0.88);
+    background:rgba(0,0,0,0.5);   /* 반투명: 뒤의 별이 비침 */
     transition:opacity .3s ease;
   }
   #overlay.hidden { opacity:0; pointer-events:none; }
@@ -125,12 +125,9 @@
 <div id="overlay">
   <h1>SOLAR</h1>
   <div class="stats" id="overlay-stats" style="display:none"></div>
-  <div class="hint" id="overlay-hint">
-    같은 행성끼리 부딪히면 한 단계 작은 행성이 됩니다.<br>
-    달끼리 부딪히면 소멸! 레벨이 오르면 큰 행성이 해금됩니다.
-  </div>
+  <div class="hint" id="overlay-hint" style="display:none"></div>
   <button id="start-btn">START</button>
-  <a id="classic-link" href="index.html">&#8592;&nbsp;CLASSIC&nbsp;MODE</a>
+  <a id="classic-link" href="index.html" style="margin-top:26px;">&#8592;&nbsp;CLASSIC&nbsp;MODE</a>
 </div>
 
 <script>
@@ -773,8 +770,7 @@ if('serviceWorker' in navigator){
     running=false;
     overlayTitle.textContent='SOLAR';
     overlayStats.style.display='none';
-    overlayHint.style.display='block';
-    overlayHint.innerHTML='같은 행성끼리 부딪히면 한 단계 작은 행성이 됩니다.<br>달끼리 부딪히면 소멸! 레벨이 오르면 큰 행성이 해금됩니다.';
+    overlayHint.style.display='none';
     startBtn.textContent='START';
     overlay.classList.remove('hidden');
   });
