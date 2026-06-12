@@ -141,13 +141,15 @@ if('serviceWorker' in navigator){
 <script>
 (function(){
   // ───────── 기본 설정 ─────────
-  const COLORS = ['#00e5ff','#39ff14','#ffe600','#ff9100','#ff1744','#ff3df0','#2979ff','#ececec'];
+  const COLORS = ['#00e5ff','#39ff14','#fff200','#ff8400','#ff1744','#ff3df0','#2255ff','#f0f0f0'];
+  // 무늬 보조 단서: 색만으로 헷갈리는 형제들에게 테두리 스타일 차이를 줌
+  const RING_STYLE = { '#ff8400':'dash', '#2255ff':'double' };   // 주황=점선, 파랑=이중링
   const BALL_START_NUM = 3;
   const DECEL = 0.075;             // 선형 감속: 일정하게 미끄러지다 딱 멈춤 (당구 느낌)
   const STOP_SPEED = 0.05;
   const RESTITUTION = 1.25;        // 1보다 크게: 부딪힌 공이 서로 튕겨나가는 탄력
   const WALL_BOUNCE = 0.95;
-  const MAX_POWER = 13;            // 발사 최대 속도
+  const MAX_POWER = 15;            // 발사 최대 속도
   const POP_RANGE = 1.45;          // 같은 색은 이 배율 거리 안으로 가까워지면 터짐
   const POP_TICK = 20;             // 붙어 있는 같은 색이 연속으로 터지는 간격 (프레임)
 
@@ -339,18 +341,22 @@ if('serviceWorker' in navigator){
     while(queue.length<4) queue.push(randColor());
     renderQueue();
   }
+  function qStyle(el, color){
+    const style = RING_STYLE[color]==='dash' ? 'dashed' : 'solid';
+    el.style.border='2px '+style+' '+color;
+    el.style.color=color;
+    let shadow='0 0 8px '+color+', inset 0 0 6px '+color;
+    if(RING_STYLE[color]==='double') shadow += ', inset 0 0 0 4px #000, inset 0 0 0 5.5px '+color;
+    el.style.boxShadow=shadow;
+  }
   function renderQueue(){
-    launcherBallEl.style.border='2px solid '+queue[0];
-    launcherBallEl.style.color=queue[0];
-    launcherBallEl.style.boxShadow='0 0 8px '+queue[0]+', inset 0 0 6px '+queue[0];
+    qStyle(launcherBallEl, queue[0]);
     launcherBallEl.textContent=BALL_START_NUM;
     nextQueueEl.innerHTML='';
     for(let i=1;i<4;i++){
       const d=document.createElement('div');
       d.className='q-ball';
-      d.style.border='2px solid '+queue[i];
-      d.style.color=queue[i];
-      d.style.boxShadow='0 0 6px '+queue[i]+', inset 0 0 5px '+queue[i];
+      qStyle(d, queue[i]);
       d.textContent=BALL_START_NUM;
       nextQueueEl.appendChild(d);
     }
@@ -428,7 +434,7 @@ if('serviceWorker' in navigator){
     const dx = aimX-lp.x, dy = aimY-lp.y;
     if(dy>=-10) return; // 위쪽 방향만 발사
     const dist = Math.hypot(dx,dy);
-    const power = dist/H * MAX_POWER * 2.1; // 터치가 멀수록 강하게
+    const power = dist/H * MAX_POWER * 2.3; // 터치가 멀수록 강하게
     fire(dx, dy, power);
   }
   window.addEventListener('pointerup', endAim);
@@ -630,7 +636,15 @@ if('serviceWorker' in navigator){
     ctx.fill();
     ctx.lineWidth=2.4;
     ctx.strokeStyle=b.color;
+    if(RING_STYLE[b.color]==='dash') ctx.setLineDash([5,3.5]);
     ctx.stroke();
+    ctx.setLineDash([]);
+    if(RING_STYLE[b.color]==='double'){
+      ctx.beginPath();
+      ctx.arc(0,0,b.r*0.72,0,Math.PI*2);
+      ctx.lineWidth=1.6;
+      ctx.stroke();
+    }
     ctx.shadowBlur=6;
     ctx.fillStyle=b.color;
     ctx.font=(b.r*1.1)+'px "Special Elite", monospace';
