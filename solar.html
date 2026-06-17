@@ -88,14 +88,21 @@
     text-align:center; line-height:1.7; max-width:290px;
   }
   #overlay button {
-    font-family:'Special Elite', monospace;
-    font-size:clamp(17px, 5vw, 22px); letter-spacing:0.18em;
+    font-family:'Special Elite','Apple SD Gothic Neo',-apple-system,sans-serif;
+    font-size:clamp(15px, 3.6vw, 18px); letter-spacing:0.14em;
     color:#000; background:#e8eaea;
     border:none; border-radius:4px;
-    padding:13px 42px; cursor:pointer;
+    padding:11px 34px; cursor:pointer;
     box-shadow:0 0 16px rgba(255,255,255,0.4);
   }
   #overlay button:active { transform:translateY(2px); }
+  #overlay button.secondary {
+    font-size:clamp(11px,2.8vw,13px); letter-spacing:0.1em;
+    color:#7a8080; background:none; border:1px solid #3a3f3f;
+    padding:7px 18px; box-shadow:none; margin-top:14px;
+  }
+  #overlay button.secondary:active { transform:translateY(1px); color:#aab0b0; }
+  #overlay { gap:8px; }
   #classic-link {
     color:#6c7171; font-size:clamp(13px,3.8vw,16px); letter-spacing:0.15em;
     text-decoration:none; cursor:pointer;
@@ -127,8 +134,8 @@
   <div class="stats" id="overlay-stats" style="display:none"></div>
   <div class="hint" id="overlay-hint" style="display:none"></div>
   <button id="start-btn">START</button>
-  <button id="resume-btn" style="display:none;margin-top:12px;background:none;border:1px solid #3a3f3f;color:#7a8080;font-size:0.62em;letter-spacing:0.12em;padding:7px 16px;">이어하기</button>
-  <div style="display:flex; flex-direction:column; gap:14px; align-items:center; margin-top:26px;">
+  <button id="resume-btn" style="display:none;">CONTINUE</button>
+  <div style="order:5;display:flex; flex-direction:column; gap:14px; align-items:center; margin-top:26px;">
     <a href="index.html" style="color:#6c7171;font-size:clamp(13px,3.8vw,16px);letter-spacing:0.15em;text-decoration:none;">&#8592;&nbsp;MENU</a>
   </div>
 </div>
@@ -787,14 +794,26 @@ if('serviceWorker' in navigator){
 
   const resumeBtn = document.getElementById('resume-btn');
 
-  // 메뉴(시작) 화면 — START=새 게임, 저장본 있으면 아래 작은 '이어하기'
+  // 메뉴(시작) 화면 — 저장본 있으면 '이어하기'가 크게(주), '새 게임'이 작게(보조)
   function showMenu(){
     running=false;
     overlayTitle.textContent='SOLAR';
     overlayStats.style.display='none';
     overlayHint.style.display='none';
-    startBtn.textContent='START';
-    resumeBtn.style.display = loadProgress() ? 'inline-block' : 'none';
+    const hasSave = !!loadProgress();
+    if(hasSave){
+      resumeBtn.style.display='inline-block';
+      resumeBtn.classList.remove('secondary');
+      resumeBtn.style.order='0';
+      startBtn.textContent='NEW GAME';
+      startBtn.classList.add('secondary');
+      startBtn.style.order='1';
+    }else{
+      resumeBtn.style.display='none';
+      startBtn.textContent='START';
+      startBtn.classList.remove('secondary');
+      startBtn.style.order='0';
+    }
     overlay.classList.remove('hidden');
   }
   function beginGame(fresh){
