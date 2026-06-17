@@ -1,5 +1,5 @@
 // Just Pop It — 오프라인 캐시
-const CACHE = 'jpi-v13';
+const CACHE = 'jpi-v14';
 const ASSETS = [
   './',
   './index.html',
@@ -25,14 +25,26 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// 캐시 우선, 없으면 네트워크 (폰트 등 외부 리소스는 받아오면 캐시에 저장)
+// HTML은 네트워크 우선(최신 코드 반영), 나머지는 캐시 우선
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(hit => {
-      if (hit) return hit;
-      return fetch(e.request).then(res => {
+  const req = e.request;
+  const isHTML = req.mode === 'navigate' || (req.headers.get('accept')||'').includes('text/html');
+  if (isHTML) {
+    e.respondWith(
+      fetch(req).then(res => {
         const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
+        caches.open(CACHE).then(c => c.put(req, copy)).catch(()=>{});
+        return res;
+      }).catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))
+    );
+    return;
+  }
+  e.respondWith(
+    caches.match(req).then(hit => {
+      if (hit) return hit;
+      return fetch(req).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(req, copy)).catch(()=>{});
         return res;
       }).catch(() => caches.match('./index.html'));
     })
