@@ -359,12 +359,40 @@ if('serviceWorker' in navigator){
     }catch(e){}
   }
 
+  // ── 진행 중 게임 자동 저장/복원 ──
+  const SAVE_KEY='solar-save';
+  function saveProgress(){
+    if(!running) return;
+    try{
+      const data={ balls, level, popped, until, queue, ballSeq, record };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    }catch(e){}
+  }
+  function clearProgress(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+  function loadProgress(){
+    try{
+      const raw=localStorage.getItem(SAVE_KEY);
+      if(!raw) return null;
+      const d=JSON.parse(raw);
+      if(!d || !Array.isArray(d.balls) || !Array.isArray(d.queue) || d.queue.length<4) return null;
+      return d;
+    }catch(e){ return null; }
+  }
+  function restoreGame(d){
+    balls=d.balls||[]; particles=d.particles||[];
+    level=d.level||1; popped=d.popped||0; until=d.until||quotaFor(level);
+    queue=d.queue; ballSeq=d.ballSeq||0; record=d.record||record;
+    pairCooldown.clear(); running=true;
+    renderQueue(); updateHUD();
+  }
+
   function newGame(){
     balls=[]; particles=[]; pairCooldown.clear();
     level=1; popped=0; until=quotaFor(1);
     queue=[]; refillQueue();
     running=true;
     updateHUD();
+    saveProgress();
   }
 
   // ───────── 발사 ─────────
@@ -389,6 +417,7 @@ if('serviceWorker' in navigator){
     queue.shift();
     refillQueue();
     sound(220, 0.1, 'triangle', 0.12);
+    saveProgress();
   }
 
   fieldBox.addEventListener('pointerdown', e=>{
@@ -436,6 +465,7 @@ if('serviceWorker' in navigator){
       until=quotaFor(level);
       sound(660, 0.3, 'sine', 0.18);
       flashLevel=1;
+      saveProgress();
     }
   }
 
@@ -456,6 +486,7 @@ if('serviceWorker' in navigator){
 
   function endGame(){
     running=false;
+    clearProgress();
     saveScore();
     overlayTitle.textContent='GAME OVER';
     overlayStats.style.display='block';
@@ -750,6 +781,24 @@ if('serviceWorker' in navigator){
   // ───────── 메뉴 ─────────
   loadRecord();
   updateHUD();
+
+  // 진행 중이던 게임이 있으면 자동으로 이어서 시작
+  (function tryResume(){
+    const saved=loadProgress();
+    if(saved){
+      overlay.classList.add('hidden');
+      overlayStats.style.display='none';
+      resize();
+      restoreGame(saved);
+      if(!bgm.isOn()){ bgm.toggle(); sfxOn=true; musicBtn.innerHTML='&#9834;&nbsp;ON'; }
+    }
+  })();
+
+  // 앱을 끄거나 뒤로 가는 등 화면을 벗어날 때 즉시 저장
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveProgress(); });
+  window.addEventListener('pagehide', saveProgress);
+  window.addEventListener('beforeunload', saveProgress);
+
   startBtn.addEventListener('click', ()=>{
     overlay.classList.add('hidden');
     overlayStats.style.display='none';
@@ -767,6 +816,7 @@ if('serviceWorker' in navigator){
     musicBtn.innerHTML = o ? '&#9834;&nbsp;ON' : '&#9834;&nbsp;OFF';
   });
   menuBtn.addEventListener('click', ()=>{
+    saveProgress();   // 메뉴로 나가도 진행 상태 보존
     running=false;
     overlayTitle.textContent='SOLAR';
     overlayStats.style.display='none';

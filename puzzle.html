@@ -237,6 +237,17 @@ if('serviceWorker' in navigator){
   function saveClear(arr){
     try{ localStorage.setItem('puzzle-clear', JSON.stringify(arr)); }catch(e){}
   }
+  // ── 풀던 레벨 기억 (나갔다 와도 그 레벨로 복귀) ──
+  function saveCurLevel(){ try{ localStorage.setItem('puzzle-cur', String(curLevel)); }catch(e){} }
+  function clearCurLevel(){ try{ localStorage.removeItem('puzzle-cur'); }catch(e){} }
+  function loadCurLevel(){
+    try{
+      const v=localStorage.getItem('puzzle-cur');
+      if(v===null) return null;
+      const n=parseInt(v,10);
+      return (!isNaN(n) && n>=0 && n<LEVELS.length) ? n : null;
+    }catch(e){ return null; }
+  }
 
   // ───────── 사운드 ─────────
   let audioCtx=null;
@@ -285,6 +296,7 @@ if('serviceWorker' in navigator){
     renderQueue();
     running=true;
     overlay.classList.add('hidden');
+    saveCurLevel();
   }
 
   function renderQueue(){
@@ -316,6 +328,7 @@ if('serviceWorker' in navigator){
   // ───────── 레벨 선택 화면 ─────────
   function showLevelSelect(){
     running=false;
+    clearCurLevel();
     const cleared=loadClear();
     overlayTitle.textContent='PUZZLE';
     overlayHint.style.display='none';
@@ -337,6 +350,7 @@ if('serviceWorker' in navigator){
 
   function showResult(win){
     resolved=true; running=false;
+    clearCurLevel();
     const cleared=loadClear();
     levelGrid.style.display='none';
     overlayHint.style.display='block';
@@ -680,8 +694,12 @@ if('serviceWorker' in navigator){
   retryBtn.addEventListener('click', ()=>{ if(LEVELS[curLevel]){ resize(); startLevel(curLevel); } });
   levelsBtn.addEventListener('click', showLevelSelect);
 
-  // 시작: 레벨 선택 화면
-  showLevelSelect();
+  // 시작: 풀던 레벨이 있으면 그 레벨로 복귀, 없으면 레벨 선택 화면
+  (function init(){
+    const lv=loadCurLevel();
+    if(lv!==null){ resize(); startLevel(lv); }
+    else showLevelSelect();
+  })();
 })();
 </script>
 </body>
