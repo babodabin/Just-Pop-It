@@ -21,225 +21,109 @@
     touch-action:none; user-select:none; -webkit-user-select:none;
     color:#9a9f9f;
   }
-  #wrap {
-    position:fixed; inset:0; display:flex; flex-direction:column;
-    /* 아이폰 상태바(시계/배터리) 줄은 게임 영역에서 제외 — 최소 52px 확보 */
-    padding-top:max(env(safe-area-inset-top, 0px), 52px);
-    padding-bottom:env(safe-area-inset-bottom);
+  #bg { position:fixed; inset:0; width:100%; height:100%; display:block; z-index:0; }
+
+  #menu {
+    position:fixed; inset:0; z-index:1;
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    padding:max(env(safe-area-inset-top,0px),40px) 24px env(safe-area-inset-bottom);
+    gap:38px;
+  }
+  /* 제목 */
+  #title {
+    text-align:center; line-height:1.05;
+  }
+  #title .big {
+    display:block; font-size:clamp(40px, 13vw, 78px); color:#e8eaea;
+    letter-spacing:0.08em; text-shadow:0 0 18px rgba(255,255,255,0.4);
+  }
+  #title .sub {
+    display:block; margin-top:10px; font-size:clamp(11px,3.2vw,14px);
+    letter-spacing:0.4em; color:#6c7171;
   }
 
-  /* ── 플레이 필드 ── */
-  #field-box {
-    flex:1; position:relative; margin:10px 8px 6px 8px;
-    border:2px solid rgba(255,255,255,0.85);
-    border-radius:6px;
-    box-shadow:0 0 18px rgba(255,255,255,0.35), inset 0 0 14px rgba(255,255,255,0.12);
-    overflow:hidden;
+  /* 모드 버튼들 */
+  #modes { display:flex; flex-direction:column; gap:18px; width:100%; max-width:330px; }
+  .mode {
+    display:flex; align-items:center; justify-content:center; gap:12px;
+    text-decoration:none; color:#e8eaea;
+    font-size:clamp(18px,5.2vw,24px); letter-spacing:0.16em;
+    padding:18px 20px; border-radius:10px;
+    border:2px solid var(--c); background:rgba(0,0,0,0.45);
+    box-shadow:0 0 14px var(--g), inset 0 0 10px var(--g);
+    transition:transform .08s ease, box-shadow .2s ease;
   }
-  canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .mode:active { transform:translateY(2px) scale(0.99); }
+  .mode .ic { font-size:1.15em; line-height:1; filter:drop-shadow(0 0 6px var(--c)); }
+  .mode.classic { --c:#00e5ff; --g:rgba(0,229,255,0.30); }
+  .mode.solar   { --c:#ff8400; --g:rgba(255,132,0,0.30); }
+  .mode.puzzle  { --c:#39ff14; --g:rgba(57,255,20,0.28); }
 
-  /* ── 하단 바 ── */
-  #bottom-bar {
-    height:96px; position:relative;
-    display:flex; align-items:flex-start; justify-content:space-between;
-    padding:14px 16px 0 16px;
-    color:#9a9f9f;
-    font-size:clamp(14px, 4vw, 18px);
-    letter-spacing:0.12em;
+  /* 음악 토글 */
+  #music {
+    cursor:pointer; color:#9a9f9f; letter-spacing:0.18em;
+    font-size:clamp(13px,3.8vw,16px); padding:8px 18px;
+    border:1px solid #3a3f3f; border-radius:8px; background:rgba(0,0,0,0.4);
   }
-  #next-area { display:flex; flex-direction:column; gap:6px; }
-  #next-queue { display:flex; gap:7px; margin-top:4px; }
-  .q-ball {
-    width:30px; height:30px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:17px; background:#000;
-  }
-  #right-area { text-align:right; display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
-  #menu-btn, #music-btn { cursor:pointer; }
-  #menu-btn:active, #music-btn:active { color:#fff; }
-
-  /* 발사대 (하단 중앙) */
-  #launcher {
-    position:absolute; left:50%; top:-22px; transform:translateX(-50%);
-    width:44px; height:44px; border-radius:50%;
-    border:2.5px solid rgba(255,255,255,0.9);
-    box-shadow:0 0 10px rgba(255,255,255,0.5);
-    display:flex; align-items:center; justify-content:center;
-    background:#000;
-  }
-  #launcher .q-ball { width:34px; height:34px; font-size:19px; }
-
-  /* ── 오버레이 (메뉴 / 게임오버) ── */
-  #overlay {
-    position:fixed; inset:0; z-index:10;
-    display:flex; flex-direction:column; justify-content:center; align-items:center; gap:20px;
-    background:rgba(0,0,0,0.88);
-    transition:opacity .3s ease;
-  }
-  #overlay.hidden { opacity:0; pointer-events:none; }
-  #overlay h1 {
-    font-weight:400; color:#e8eaea;
-    font-size:clamp(30px, 8.5vw, 52px);
-    letter-spacing:0.1em; text-align:center;
-    text-shadow:0 0 14px rgba(255,255,255,0.35);
-  }
-  #overlay .stats { font-size:clamp(16px, 4.5vw, 22px); letter-spacing:0.15em; text-align:center; line-height:1.9; color:#9a9f9f; }
-  #overlay .hint {
-    font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;
-    font-size:clamp(12px, 3.4vw, 14px); color:#6c7171;
-    text-align:center; line-height:1.7; max-width:290px;
-  }
-  #overlay button {
-    font-family:'Special Elite', monospace;
-    font-size:clamp(17px, 5vw, 22px); letter-spacing:0.18em;
-    color:#000; background:#e8eaea;
-    border:none; border-radius:4px;
-    padding:13px 42px; cursor:pointer;
-    box-shadow:0 0 16px rgba(255,255,255,0.4);
-  }
-  #overlay button:active { transform:translateY(2px); }
+  #music:active { color:#fff; }
+  #music.on { color:#e8eaea; border-color:#6c7171; box-shadow:0 0 10px rgba(255,255,255,0.18); }
 </style>
 </head>
 <body>
-<div id="wrap">
-  <div id="field-box">
-    <canvas id="game"></canvas>
+<canvas id="bg"></canvas>
+<div id="menu">
+  <div id="title">
+    <span class="big">JUST&nbsp;POP&nbsp;IT</span>
+    <span class="sub">SELECT&nbsp;MODE</span>
   </div>
-  <div id="bottom-bar">
-    <div id="next-area">
-      <div>NEXT</div>
-      <div id="next-queue"></div>
-    </div>
-    <div id="launcher"><div class="q-ball" id="launcher-ball"></div></div>
-    <div id="right-area">
-      <div id="record-label">RECORD&nbsp;&nbsp;0</div>
-      <div id="music-btn">&#9834;&nbsp;OFF</div>
-      <div id="menu-btn">BACK&nbsp;TO&nbsp;MENU</div>
-    </div>
+  <div id="modes">
+    <a class="mode classic" href="classic.html"><span class="ic">&#9679;</span>CLASSIC</a>
+    <a class="mode solar"   href="solar.html"><span class="ic">&#9728;</span>SOLAR</a>
+    <a class="mode puzzle"  href="puzzle.html"><span class="ic">&#9737;</span>PUZZLE</a>
   </div>
+  <div id="music">&#9834;&nbsp;MUSIC&nbsp;ON</div>
 </div>
-
-<div id="overlay">
-  <h1 id="overlay-title">JUST&nbsp;POP&nbsp;IT</h1>
-  <div class="stats" id="overlay-stats" style="display:none"></div>
-  <div class="hint" id="overlay-hint" style="display:none"></div>
-  <button id="start-btn">START</button>
-  <button id="resume-btn" style="display:none;margin-top:12px;background:none;border:1px solid #3a3f3f;color:#7a8080;font-size:0.62em;letter-spacing:0.12em;padding:7px 16px;">이어하기</button>
-  <div style="display:flex; flex-direction:column; gap:14px; align-items:center; margin-top:26px;">
-    <a href="solar.html" style="color:#6c7171;font-size:clamp(13px,3.8vw,16px);letter-spacing:0.15em;text-decoration:none;">SOLAR&nbsp;MODE&nbsp;&#9728;</a>
-    <a href="puzzle.html" style="color:#6c7171;font-size:clamp(13px,3.8vw,16px);letter-spacing:0.15em;text-decoration:none;">PUZZLE&nbsp;MODE&nbsp;&#9737;</a>
-  </div>
-</div>
-
 <script>
-// 오프라인 실행 (PWA)
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  });
-}
-</script>
-<script>
-(function(){
-  // ───────── 기본 설정 ─────────
-  const COLORS = ['#00e5ff','#39ff14','#fff200','#ff8400','#ff1744','#ff3df0','#2255ff','#f0f0f0'];
-  // 무늬 보조 단서: 색만으로 헷갈리는 형제들에게 테두리 스타일 차이를 줌
-  const RING_STYLE = { '#ff8400':'dash', '#2255ff':'double' };   // 주황=점선, 파랑=이중링
-  const BALL_START_NUM = 3;
-  const DECEL = 0.075;             // 선형 감속: 일정하게 미끄러지다 딱 멈춤 (당구 느낌)
-  const STOP_SPEED = 0.05;
-  const RESTITUTION = 1.25;        // 1보다 크게: 부딪힌 공이 서로 튕겨나가는 탄력
-  const WALL_BOUNCE = 0.95;
-  const MAX_POWER = 15;            // 발사 최대 속도
-  const POP_RANGE = 1.45;          // 같은 색은 이 배율 거리 안으로 가까워지면 터짐
-  const POP_TICK = 20;             // 붙어 있는 같은 색이 연속으로 터지는 간격 (프레임)
+  const $=id=>document.getElementById(id);
 
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  const fieldBox = document.getElementById('field-box');
-  const nextQueueEl = document.getElementById('next-queue');
-  const launcherBallEl = document.getElementById('launcher-ball');
-  const recordLabel = document.getElementById('record-label');
-  const menuBtn = document.getElementById('menu-btn');
-  const musicBtn = document.getElementById('music-btn');
-  const overlay = document.getElementById('overlay');
-  const overlayTitle = document.getElementById('overlay-title');
-  const overlayStats = document.getElementById('overlay-stats');
-  const overlayHint = document.getElementById('overlay-hint');
-  const startBtn = document.getElementById('start-btn');
-
-  let W=0, H=0, DPR=1, BALL_R=16;
+  // ── 별 배경 (게임 화면과 같은 느낌) ──
+  const canvas=$('bg'), ctx=canvas.getContext('2d');
+  let W=0,H=0,DPR=1,stars=[];
   function resize(){
-    DPR = Math.min(window.devicePixelRatio||1, 2);
-    const rect = fieldBox.getBoundingClientRect();
-    W = rect.width; H = rect.height;
-    canvas.width = W*DPR; canvas.height = H*DPR;
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    W=window.innerWidth; H=window.innerHeight;
+    canvas.width=W*DPR; canvas.height=H*DPR;
+    canvas.style.width=W+'px'; canvas.style.height=H+'px';
     ctx.setTransform(DPR,0,0,DPR,0,0);
-    BALL_R = Math.max(14, Math.min(W,H)*0.042);
-  }
-  window.addEventListener('resize', resize);
-  resize();
-
-  // ───────── 별가루 + 모눈 배경 ─────────
-  let stars=[];
-  function makeStars(){
     stars=[];
-    const n = Math.floor(W*H/2600);
-    for(let i=0;i<n;i++){
-      stars.push({x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.3+0.3, a:Math.random()*0.7+0.15});
-    }
+    const n=Math.floor(W*H/2600);
+    for(let i=0;i<n;i++) stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.3+0.3,a:Math.random()*0.7+0.15,tw:Math.random()*0.02+0.005,ph:Math.random()*Math.PI*2});
   }
-  makeStars();
-  window.addEventListener('resize', makeStars);
-
-  function drawBackground(){
-    ctx.fillStyle='#050505';
-    ctx.fillRect(0,0,W,H);
-    // 모눈
-    ctx.strokeStyle='rgba(255,255,255,0.07)';
-    ctx.lineWidth=1;
+  function draw(t){
+    ctx.clearRect(0,0,W,H);
+    // 옅은 그리드
+    ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.lineWidth=1; ctx.beginPath();
     const g=18;
-    ctx.beginPath();
     for(let x=0;x<=W;x+=g){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
     for(let y=0;y<=H;y+=g){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
     ctx.stroke();
-    // 별
+    // 별 (살짝 반짝)
     for(const s of stars){
-      ctx.globalAlpha=s.a;
-      ctx.fillStyle='#fff';
-      ctx.fillRect(s.x, s.y, s.r, s.r);
+      const a=s.a*(0.6+0.4*Math.sin(t*s.tw+s.ph));
+      ctx.fillStyle='rgba(255,255,255,'+a.toFixed(3)+')';
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
     }
-    ctx.globalAlpha=1;
+    requestAnimationFrame(draw);
   }
+  resize(); requestAnimationFrame(draw);
+  window.addEventListener('resize', resize);
 
-  // ───────── 사운드 ─────────
-  let audioCtx=null;
-  let sfxOn=true;      // ♪ 버튼으로 음악과 함께 꺼짐
-  const SFX_VOL=0.4;   // 효과음 전체 볼륨 (배경음악이 잘 들리도록 낮춤)
-  function sound(freq, dur, type, vol){
-    if(!sfxOn) return;
-    try{
-      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-      o.type=type||'sine';
-      o.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(Math.max(60,freq*0.4), audioCtx.currentTime+dur);
-      g.gain.setValueAtTime((vol||0.15)*SFX_VOL, audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+dur);
-      o.connect(g); g.connect(audioCtx.destination);
-      o.start(); o.stop(audioCtx.currentTime+dur+0.02);
-    }catch(e){}
-  }
-
-  // ───────── 배경음악: Gymnopédie No.1 (Erik Satie, 1888 — 저작권 소멸) 로파이 편곡 ─────────
-  // 3/4박. 베이스(1박) + 떠 있는 코드(2-3박)가 두 화음으로 교차하고, 그 위에 멜로디가 흐름.
+  // ── 배경음악 엔진 (게임과 동일) ──
   const bgm=(function(){
     let ac=null, master=null, timer=null, nextBar=0, barIdx=0, on=false;
     const BPM=64, BEAT=60/BPM, BAR=3*BEAT;
-    // 반주: G화음 마디와 D화음 마디가 교대로 흔들림
-    const accA={bass:43, ch:[59,62,66]};   // G + (B D F#)
-    const accB={bass:38, ch:[57,61,66]};   // D + (A C# F#)
-    // 멜로디 (12마디 루프): [박자, 음, 길이(박)]
+    const accA={bass:43, ch:[59,62,66]};
+    const accB={bass:38, ch:[57,61,66]};
     const REST=[];
     const mel=[
       REST, REST,
@@ -260,7 +144,6 @@ if('serviceWorker' in navigator){
       const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2000; lp.Q.value=0.4;
       master=ac.createGain(); master.gain.value=0;
       master.connect(lp); lp.connect(ac.destination);
-      // 빈티지 LP 노이즈 (자글자글)
       const len=ac.sampleRate*2;
       const buf=ac.createBuffer(1,len,ac.sampleRate);
       const d=buf.getChannelData(0);
@@ -282,24 +165,16 @@ if('serviceWorker' in navigator){
     }
     function scheduleBar(t,idx){
       const acc=(idx%2===0)?accA:accB;
-      // 1박: 베이스
       tone(acc.bass, t, BAR*0.95, 'sine', 0.10, 0.04);
-      // 2박: 코드 (살짝 스트럼처럼 어긋나게)
-      acc.ch.forEach((m,i)=>{
-        tone(m, t+BEAT+i*0.035, BEAT*1.9, 'sine', 0.045, 0.08);
-      });
-      // 멜로디
+      acc.ch.forEach((m,i)=>{ tone(m, t+BEAT+i*0.035, BEAT*1.9, 'sine', 0.045, 0.08); });
       const bar=mel[idx%mel.length];
       for(const [b,m,len] of bar){
         tone(m, t+b*BEAT, len*BEAT*1.05, 'sine', 0.105, 0.05);
-        tone(m+12, t+b*BEAT, len*BEAT, 'sine', 0.018, 0.05);  // 옥타브 위 잔향 살짝
+        tone(m+12, t+b*BEAT, len*BEAT, 'sine', 0.018, 0.05);
       }
     }
     function loop(){
-      while(nextBar<ac.currentTime+0.8){
-        scheduleBar(nextBar,barIdx++);
-        nextBar+=BAR;
-      }
+      while(nextBar<ac.currentTime+0.8){ scheduleBar(nextBar,barIdx++); nextBar+=BAR; }
     }
     return {
       toggle(){
@@ -324,507 +199,28 @@ if('serviceWorker' in navigator){
     };
   })();
 
-  // ───────── 게임 상태 ─────────
-  let balls=[], particles=[];
-  let level=1, popped=0, until=5, record=0;
-  let queue=[];           // queue[0]=발사대 공, queue[1..3]=NEXT
-  let running=false;
-  let aiming=false, aimX=0, aimY=0;
-  let pairCooldown = new Map();   // 같은 색 연속 팝 간격 관리
-  let flashLevel=0;
-  let ballSeq=0;
-
-  function quotaFor(lv){ return lv*5; } // 5, 10, 15, 20... (원작)
-  function colorPool(){ return COLORS.slice(0, Math.min(level, COLORS.length)); }
-  function randColor(){ const p=colorPool(); return p[Math.floor(Math.random()*p.length)]; }
-
-  function refillQueue(){
-    while(queue.length<4) queue.push(randColor());
-    renderQueue();
+  // ── 음악 ON/OFF (설정 저장 + 첫 페이지에서도 재생) ──
+  function getMusic(){ try{ return localStorage.getItem('jpi-music')!=='off'; }catch(e){ return true; } }
+  function setMusic(on){ try{ localStorage.setItem('jpi-music', on?'on':'off'); }catch(e){} }
+  function renderMusic(){
+    const on=getMusic();
+    $('music').innerHTML='&#9834;&nbsp;MUSIC&nbsp;'+(on?'ON':'OFF');
+    $('music').classList.toggle('on', on);
   }
-  function qStyle(el, color){
-    const style = RING_STYLE[color]==='dash' ? 'dashed' : 'solid';
-    el.style.border='2px '+style+' '+color;
-    el.style.color=color;
-    let shadow='0 0 8px '+color+', inset 0 0 6px '+color;
-    if(RING_STYLE[color]==='double') shadow += ', inset 0 0 0 4px #000, inset 0 0 0 5.5px '+color;
-    el.style.boxShadow=shadow;
-  }
-  function renderQueue(){
-    qStyle(launcherBallEl, queue[0]);
-    launcherBallEl.textContent=BALL_START_NUM;
-    nextQueueEl.innerHTML='';
-    for(let i=1;i<4;i++){
-      const d=document.createElement('div');
-      d.className='q-ball';
-      qStyle(d, queue[i]);
-      d.textContent=BALL_START_NUM;
-      nextQueueEl.appendChild(d);
-    }
-  }
-
-  function updateHUD(){
-    recordLabel.innerHTML='RECORD&nbsp;&nbsp;'+record;
-  }
-
-  // ── 점수 영구 저장 (홈 화면 앱에서는 껐다 켜도 유지) ──
-  function loadRecord(){
-    try{ record = parseInt(localStorage.getItem('jpi-record')) || 0; }
-    catch(e){ record = 0; }
-  }
-  function loadHistory(){
-    try{ return JSON.parse(localStorage.getItem('jpi-history')) || []; }
-    catch(e){ return []; }
-  }
-  function saveScore(){
-    try{
-      localStorage.setItem('jpi-record', String(record));
-      const h = loadHistory();
-      h.push({ s: popped, l: level, d: new Date().toISOString().slice(0,10) });
-      h.sort((x,y)=>y.s-x.s);
-      localStorage.setItem('jpi-history', JSON.stringify(h.slice(0,5)));
-    }catch(e){}
-  }
-
-  // ── 진행 중 게임 자동 저장/복원 ──
-  const SAVE_KEY='jpi-save';
-  function saveProgress(){
-    if(!running) return;
-    try{
-      const data={ balls, level, popped, until, queue, ballSeq, record };
-      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-    }catch(e){}
-  }
-  function clearProgress(){
-    try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
-  }
-  function loadProgress(){
-    try{
-      const raw=localStorage.getItem(SAVE_KEY);
-      if(!raw) return null;
-      const d=JSON.parse(raw);
-      if(!d || !Array.isArray(d.balls) || !Array.isArray(d.queue) || d.queue.length<4) return null;
-      return d;
-    }catch(e){ return null; }
-  }
-  function restoreGame(d){
-    balls = d.balls || [];
-    particles = d.particles || [];
-    level = d.level || 1;
-    popped = d.popped || 0;
-    until = d.until || quotaFor(level);
-    queue = d.queue;
-    ballSeq = d.ballSeq || 0;
-    record = d.record || record;
-    pairCooldown.clear();
-    running = true;
-    renderQueue();
-    updateHUD();
-  }
-
-  function newGame(){
-    balls=[]; particles=[]; pairCooldown.clear();
-    level=1; popped=0; until=quotaFor(1);
-    queue=[]; refillQueue();
-    running=true;
-    updateHUD();
-    saveProgress();
-  }
-
-  // ───────── 발사 ─────────
-  const launcherPos = ()=>({ x: W/2, y: H - BALL_R*0.4 });
-
-  function fire(dx, dy, power){
-    const mag = Math.hypot(dx,dy);
-    if(mag<0.001) return;
-    const lp = launcherPos();
-    const v = Math.min(power, MAX_POWER);
-    balls.push({
-      id: ballSeq++,
-      x: lp.x, y: lp.y - BALL_R,
-      vx: dx/mag*v, vy: dy/mag*v,
-      r: BALL_R, n: BALL_START_NUM,
-      color: queue[0],
-      armed: false,   // 발사 구역을 벗어난 뒤부터 아래 라인 판정
-      dead: false
-    });
-    queue.shift();
-    refillQueue();
-    sound(220, 0.1, 'triangle', 0.12);
-    saveProgress();
-  }
-
-  // ───────── 입력 (조준: 흰 원 + 조준선) ─────────
-  fieldBox.addEventListener('pointerdown', e=>{
-    if(!running) return;
-    const r = fieldBox.getBoundingClientRect();
-    aiming=true;
-    aimX=e.clientX-r.left; aimY=e.clientY-r.top;
+  $('music').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const want=!getMusic();
+    setMusic(want); renderMusic();
+    if(bgm.isOn()!==want) bgm.toggle();
   });
-  fieldBox.addEventListener('pointermove', e=>{
-    if(!aiming) return;
-    const r = fieldBox.getBoundingClientRect();
-    aimX=e.clientX-r.left; aimY=e.clientY-r.top;
-  });
-  function endAim(){
-    if(!aiming || !running){ aiming=false; return; }
-    aiming=false;
-    const lp = launcherPos();
-    const dx = aimX-lp.x, dy = aimY-lp.y;
-    if(dy>=-10) return; // 위쪽 방향만 발사
-    const dist = Math.hypot(dx,dy);
-    const power = dist/H * MAX_POWER * 2.3; // 터치가 멀수록 강하게
-    fire(dx, dy, power);
+  renderMusic();
+
+  // 브라우저 자동재생 차단 때문에, 첫 탭(아무 곳이나) 시 음악 시작
+  function firstStart(){
+    if(getMusic() && !bgm.isOn()) bgm.toggle();
+    document.removeEventListener('pointerdown', firstStart);
   }
-  window.addEventListener('pointerup', endAim);
-  window.addEventListener('pointercancel', ()=>{aiming=false;});
-
-  // ───────── 게임 규칙 ─────────
-  function decrement(b){
-    b.n--;
-    popped++; until--;
-    if(popped>record) record=popped;
-    if(b.n<=0){
-      burst(b);
-      b.dead=true;
-      sound(520, 0.16, 'sine', 0.2);
-    }else{
-      sound(330, 0.07, 'square', 0.07);
-    }
-  }
-
-  function levelCheck(){
-    if(until<=0){
-      level++;
-      until=quotaFor(level);
-      sound(660, 0.3, 'sine', 0.18);
-      flashLevel=1;
-      saveProgress();
-    }
-  }
-
-  function burst(b){
-    for(let i=0;i<26;i++){
-      const a=Math.random()*Math.PI*2, s=0.8+Math.random()*3;
-      particles.push({x:b.x,y:b.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-0.4,life:1,size:1+Math.random()*2.6,color:b.color});
-    }
-  }
-
-  // 충돌/팝 불꽃 (사진 속 반짝이 가루 느낌)
-  function sparks(x,y,color,count,speed){
-    for(let i=0;i<count;i++){
-      const a=Math.random()*Math.PI*2, s=speed*(0.3+Math.random());
-      particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.9+Math.random()*0.3,size:0.7+Math.random()*1.8,color:color});
-    }
-  }
-
-  function endGame(){
-    running=false;
-    clearProgress();
-    saveScore();
-    overlayTitle.textContent='GAME OVER';
-    overlayStats.style.display='block';
-    const h=loadHistory();
-    let rows='';
-    for(let i=0;i<h.length;i++){
-      rows += (i+1)+'.&nbsp;&nbsp;'+h[i].s+'&nbsp;&nbsp;<span style="font-size:0.75em;color:#6c7171">LV '+h[i].l+' · '+h[i].d+'</span><br>';
-    }
-    overlayStats.innerHTML='POPPED&nbsp;&nbsp;'+popped+'&nbsp;&nbsp;·&nbsp;&nbsp;LEVEL&nbsp;&nbsp;'+level
-      +'<br><br><span style="letter-spacing:0.25em">TOP&nbsp;5</span><br>'+rows;
-    overlayHint.style.display='block';
-    overlayHint.textContent='공이 아래 라인을 넘어갔습니다.';
-    startBtn.textContent='RETRY';
-    overlay.classList.remove('hidden');
-    sound(140, 0.5, 'sawtooth', 0.18);
-  }
-
-  // ───────── 물리 ─────────
-  function physics(){
-    // 팝 간격 쿨다운 감소 (프레임당 1회)
-    for(const [k,v] of pairCooldown){
-      if(v<=1) pairCooldown.delete(k);
-      else pairCooldown.set(k, v-1);
-    }
-
-    // ── 서브스텝: 한 프레임을 잘게 쪼개 빠른 공도 충돌을 놓치지 않게 ──
-    const SUB = 4;
-    for(let s=0; s<SUB; s++){
-      // 이동 + 벽 + 게임오버 판정
-      for(const b of balls){
-        b.x += b.vx/SUB;
-        b.y += b.vy/SUB;
-
-        // 벽 반사 (좌/우/상)
-        if(b.x<b.r){ b.x=b.r; b.vx=Math.abs(b.vx)*WALL_BOUNCE; }
-        if(b.x>W-b.r){ b.x=W-b.r; b.vx=-Math.abs(b.vx)*WALL_BOUNCE; }
-        if(b.y<b.r){ b.y=b.r; b.vy=Math.abs(b.vy)*WALL_BOUNCE; }
-
-        // 발사 구역을 벗어나면 아래 라인 판정 활성화
-        if(!b.armed && b.y < H - BALL_R*3.2) b.armed=true;
-
-        // 게임 오버: 공이 라인을 완전히 넘어갔을 때 (걸치는 건 세이프)
-        if(b.armed && b.y - b.r >= H){
-          endGame();
-          return;
-        }
-      }
-
-      // 충돌 (팝 + 운동량 + 불꽃)
-      for(let i=0;i<balls.length;i++){
-        for(let j=i+1;j<balls.length;j++){
-          const a=balls[i], c=balls[j];
-          if(a.dead||c.dead) continue;
-          const dx=c.x-a.x, dy=c.y-a.y;
-          const dist=Math.hypot(dx,dy), minD=a.r+c.r;
-          const popD=minD*POP_RANGE;
-
-          // 같은 색: 가까이 있는 동안 일정 간격으로 계속 터짐 (연속 팝)
-          if(dist<popD && a.color===c.color){
-            const key=a.id+'-'+c.id;
-            if(!pairCooldown.has(key)){
-              decrement(a); decrement(c);
-              sparks((a.x+c.x)/2, (a.y+c.y)/2, a.color, 16, 2.6);
-              sparks((a.x+c.x)/2, (a.y+c.y)/2, '#ffffff', 6, 1.8);
-              // 터지는 반동: 두 공이 서로 밀려남 (남은 공도 움직이게)
-              if(dist>0.0001){
-                const knx=dx/dist, kny=dy/dist, kn=1.5;
-                a.vx-=knx*kn; a.vy-=kny*kn;
-                c.vx+=knx*kn; c.vy+=kny*kn;
-              }
-              levelCheck();
-              pairCooldown.set(key, POP_TICK);
-            }
-          }
-
-          if(dist<minD && dist>0.0001){
-            // 겹침 보정
-            const overlap=(minD-dist)/2;
-            const nx=dx/dist, ny=dy/dist;
-            a.x-=nx*overlap; a.y-=ny*overlap;
-            c.x+=nx*overlap; c.y+=ny*overlap;
-
-            // 운동량 전달 (정면으로 치면 맞은 공이 속도를 거의 다 가져감)
-            const rel=(c.vx-a.vx)*nx+(c.vy-a.vy)*ny;
-            if(rel<0){
-              const jval=rel*(1+RESTITUTION)/2;
-              a.vx+=jval*nx;
-              a.vy+=jval*ny;
-              c.vx-=jval*nx;
-              c.vy-=jval*ny;
-
-              // 부딪히는 세기에 비례한 불꽃 (다른 색끼리도)
-              const impact=-rel;
-              if(impact>0.6){
-                const cx=(a.x+c.x)/2, cy=(a.y+c.y)/2;
-                const cnt=Math.min(14, Math.floor(impact*3));
-                sparks(cx, cy, a.color, cnt, impact*0.5);
-                sparks(cx, cy, c.color, cnt, impact*0.5);
-              }
-            }
-          }
-        }
-      }
-      balls=balls.filter(b=>!b.dead);
-    }
-
-    // ── 감속: 빠를 땐 크게, 느릴 땐 작게 깎여서 상→하로 자연스럽게 죽음 ──
-    for(const b of balls){
-      const sp = Math.hypot(b.vx,b.vy);
-      if(sp>0){
-        const ns = Math.max(0, sp*0.988 - 0.028);
-        if(ns<STOP_SPEED){ b.vx=0; b.vy=0; }
-        else { b.vx=b.vx/sp*ns; b.vy=b.vy/sp*ns; }
-      }
-    }
-
-    // 겹침 해소 추가 패스: 공이 3개 이상 뭉쳤을 때도 깔끔하게 떨어지도록 반복 분리
-    for(let pass=0; pass<4; pass++){
-      let any=false;
-      for(let i=0;i<balls.length;i++){
-        for(let j=i+1;j<balls.length;j++){
-          const a=balls[i], c=balls[j];
-          const dx=c.x-a.x, dy=c.y-a.y;
-          let dist=Math.hypot(dx,dy);
-          const minD=a.r+c.r;
-          if(dist<minD){
-            any=true;
-            let nx, ny;
-            if(dist<0.0001){ const ra=Math.random()*Math.PI*2; nx=Math.cos(ra); ny=Math.sin(ra); dist=0.0001; }
-            else { nx=dx/dist; ny=dy/dist; }
-            const overlap=(minD-dist)/2 + 0.2;
-            a.x-=nx*overlap; a.y-=ny*overlap;
-            c.x+=nx*overlap; c.y+=ny*overlap;
-            // 벽 밖으로 밀려나지 않게 클램프 (아래쪽은 게임오버 판정 유지 위해 제외)
-            a.x=Math.max(a.r, Math.min(W-a.r, a.x)); if(a.y<a.r) a.y=a.r;
-            c.x=Math.max(c.r, Math.min(W-c.r, c.x)); if(c.y<c.r) c.y=c.r;
-          }
-        }
-      }
-      if(!any) break;
-    }
-    updateHUD();
-  }
-
-  // ───────── 그리기 ─────────
-  function drawBall(b){
-    ctx.save();
-    ctx.translate(b.x,b.y);
-    ctx.shadowColor=b.color;
-    ctx.shadowBlur=10;
-    ctx.beginPath();
-    ctx.arc(0,0,b.r,0,Math.PI*2);
-    ctx.fillStyle='rgba(0,0,0,0.85)';
-    ctx.fill();
-    ctx.lineWidth=2.4;
-    ctx.strokeStyle=b.color;
-    if(RING_STYLE[b.color]==='dash') ctx.setLineDash([5,3.5]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    if(RING_STYLE[b.color]==='double'){
-      ctx.beginPath();
-      ctx.arc(0,0,b.r*0.72,0,Math.PI*2);
-      ctx.lineWidth=1.6;
-      ctx.stroke();
-    }
-    ctx.shadowBlur=6;
-    ctx.fillStyle=b.color;
-    ctx.font=(b.r*1.1)+'px "Special Elite", monospace';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(b.n, 0, 2);
-    ctx.restore();
-  }
-
-  function drawAim(){
-    if(!aiming || !running) return;
-    const lp=launcherPos();
-    const dx=aimX-lp.x, dy=aimY-lp.y;
-    const mag=Math.hypot(dx,dy);
-    if(mag<1) return;
-    const ext=Math.max(W,H)*2;
-    ctx.save();
-    ctx.strokeStyle='rgba(255,255,255,0.75)';
-    ctx.lineWidth=2;
-    ctx.shadowColor='rgba(255,255,255,0.8)';
-    ctx.shadowBlur=6;
-    ctx.beginPath();
-    ctx.moveTo(lp.x, lp.y);
-    ctx.lineTo(lp.x+dx/mag*ext, lp.y+dy/mag*ext);
-    ctx.stroke();
-    // 터치 위치 흰 원
-    ctx.beginPath();
-    ctx.arc(aimX, aimY, 34, 0, Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,0.45)';
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawParticles(){
-    for(let i=particles.length-1;i>=0;i--){
-      const p=particles[i];
-      p.x+=p.vx; p.y+=p.vy; p.vy+=0.02; p.life-=0.022;
-      if(p.life<=0){ particles.splice(i,1); continue; }
-      ctx.globalAlpha=Math.max(0, Math.min(1, p.life));
-      ctx.fillStyle=p.color;
-      ctx.fillRect(p.x, p.y, p.size, p.size);
-    }
-    ctx.globalAlpha=1;
-  }
-
-  function drawLevelFlash(){
-    if(flashLevel<=0) return;
-    flashLevel-=0.02;
-    ctx.save();
-    ctx.globalAlpha=Math.max(0, Math.min(flashLevel,0.85));
-    ctx.fillStyle='#e8eaea';
-    ctx.font=Math.min(W*0.12,44)+'px "Special Elite", monospace';
-    ctx.textAlign='center';
-    ctx.shadowColor='#fff'; ctx.shadowBlur=16;
-    ctx.fillText('LEVEL '+level, W/2, H*0.5);
-    ctx.restore();
-  }
-
-  // HUD를 캔버스 배경에 흐릿한 워터마크로 그림 → 공이 항상 또렷하게 보임
-  function drawHUD(){
-    ctx.save();
-    ctx.globalAlpha=0.42;
-    ctx.fillStyle='#5e6363';
-    ctx.textAlign='center';
-    ctx.textBaseline='middle';
-    const labelSize=Math.min(W*0.058, 24);
-    const valueSize=Math.min(W*0.17, 80);
-    const blocks=[
-      ['LEVEL', level, H*0.17],
-      ['POPPED', popped, H*0.5],
-      ['UNTIL NEXT LEVEL', until, H*0.83]
-    ];
-    for(const [label, value, cy] of blocks){
-      ctx.font=labelSize+'px "Special Elite", monospace';
-      ctx.fillText(label, W/2, cy - valueSize*0.62);
-      ctx.font=valueSize+'px "Special Elite", monospace';
-      ctx.fillText(value, W/2, cy + labelSize*0.55);
-    }
-    ctx.restore();
-  }
-
-  function loop(){
-    drawBackground();
-    drawHUD();
-    if(running) physics();
-    drawAim();
-    for(const b of balls) drawBall(b);
-    drawParticles();
-    drawLevelFlash();
-    requestAnimationFrame(loop);
-  }
-  loop();
-
-  // ───────── 메뉴 ─────────
-  loadRecord();
-  updateHUD();
-
-  // 앱을 끄거나 뒤로 가는 등 화면을 벗어날 때 즉시 저장
-  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveProgress(); });
-  window.addEventListener('pagehide', saveProgress);
-  window.addEventListener('beforeunload', saveProgress);
-
-  const resumeBtn = document.getElementById('resume-btn');
-
-  // 메뉴(시작) 화면 — START=새 게임, 저장본 있으면 아래 작은 '이어하기' 표시
-  function showMenu(){
-    running=false;
-    overlayTitle.textContent='JUST POP IT';
-    overlayStats.style.display='none';
-    overlayHint.style.display='none';
-    overlayHint.innerHTML='';
-    startBtn.textContent='START';
-    resumeBtn.style.display = loadProgress() ? 'inline-block' : 'none';
-    overlay.classList.remove('hidden');
-  }
-
-  function beginGame(fresh){
-    overlay.classList.add('hidden');
-    overlayStats.style.display='none';
-    resize();
-    if(fresh){ newGame(); }
-    else { const saved=loadProgress(); if(saved) restoreGame(saved); else newGame(); }
-    if(!bgm.isOn()){ bgm.toggle(); sfxOn=true; musicBtn.innerHTML='&#9834;&nbsp;ON'; }
-  }
-
-  startBtn.addEventListener('click', ()=>{ clearProgress(); beginGame(true); });   // 새 게임
-  resumeBtn.addEventListener('click', ()=>{ beginGame(false); });                  // 이어하기
-  musicBtn.addEventListener('click', ()=>{
-    const o=bgm.toggle();
-    sfxOn=o;   // 끄면 게임 소리 전체가 꺼짐
-    musicBtn.innerHTML = o ? '&#9834;&nbsp;ON' : '&#9834;&nbsp;OFF';
-  });
-  menuBtn.addEventListener('click', ()=>{
-    saveProgress();   // 메뉴로 나가도 진행 상태 보존
-    showMenu();
-  });
-
-  // 시작 시: 저장본이 있으면 '이어하기'가 보이는 메뉴를 띄움
-  showMenu();
-})();
+  document.addEventListener('pointerdown', firstStart);
 </script>
 </body>
 </html>
