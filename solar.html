@@ -104,7 +104,6 @@
 </style>
 </head>
 <body>
-<div id="dbg" style="position:fixed;left:6px;top:6px;z-index:9999;font:11px/1.4 monospace;color:#0f0;background:rgba(0,0,0,.6);padding:3px 7px;border-radius:6px;pointer-events:none;max-width:70vw;">dbg</div>
 <div id="wrap">
   <div id="field-box">
     <canvas id="game"></canvas>
@@ -128,8 +127,11 @@
   <div class="stats" id="overlay-stats" style="display:none"></div>
   <div class="hint" id="overlay-hint" style="display:none"></div>
   <button id="start-btn">START</button>
-  <button id="new-btn" style="display:none;margin-top:10px;background:none;border:1px solid #444;color:#888;font-size:0.8em;">새 게임</button>
-  <a id="classic-link" href="index.html" style="margin-top:26px;">&#8592;&nbsp;CLASSIC&nbsp;MODE</a>
+  <button id="resume-btn" style="display:none;margin-top:12px;background:none;border:1px solid #3a3f3f;color:#7a8080;font-size:0.62em;letter-spacing:0.12em;padding:7px 16px;">이어하기</button>
+  <div style="display:flex; flex-direction:column; gap:14px; align-items:center; margin-top:26px;">
+    <a href="index.html" style="color:#6c7171;font-size:clamp(13px,3.8vw,16px);letter-spacing:0.15em;text-decoration:none;">&#8592;&nbsp;CLASSIC&nbsp;MODE</a>
+    <a href="puzzle.html" style="color:#6c7171;font-size:clamp(13px,3.8vw,16px);letter-spacing:0.15em;text-decoration:none;">PUZZLE&nbsp;MODE&nbsp;&#9737;</a>
+  </div>
 </div>
 
 <script>
@@ -363,31 +365,22 @@ if('serviceWorker' in navigator){
 
   // ── 진행 중 게임 자동 저장/복원 ──
   const SAVE_KEY='solar-save';
-  const dbgEl=document.getElementById('dbg');
-  let saveCount=0;
-  function dbg(msg){ if(dbgEl) dbgEl.textContent=msg; }
-  (function(){
-    try{ localStorage.setItem('solar-test','1'); const ok=localStorage.getItem('solar-test'); localStorage.removeItem('solar-test'); dbg('LS '+(ok==='1'?'OK':'FAIL')); }
-    catch(e){ dbg('LS ERROR: '+e.message); }
-  })();
   function saveProgress(){
-    if(!running){ return; }
+    if(!running) return;
     try{
       const data={ balls, level, popped, until, queue, ballSeq, record };
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-      saveCount++;
-      dbg('저장됨 ✓ #'+saveCount+' (공'+balls.length+' lv'+level+')');
-    }catch(e){ dbg('save ERROR: '+e.message); }
+    }catch(e){}
   }
-  function clearProgress(){ try{ localStorage.removeItem(SAVE_KEY); dbg('저장본 삭제'); }catch(e){} }
+  function clearProgress(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
   function loadProgress(){
     try{
       const raw=localStorage.getItem(SAVE_KEY);
-      if(!raw){ return null; }
+      if(!raw) return null;
       const d=JSON.parse(raw);
       if(!d || !Array.isArray(d.balls) || !Array.isArray(d.queue) || d.queue.length<4) return null;
       return d;
-    }catch(e){ dbg('load ERROR: '+e.message); return null; }
+    }catch(e){ return null; }
   }
   function restoreGame(d){
     balls=d.balls||[]; particles=d.particles||[];
@@ -793,17 +786,16 @@ if('serviceWorker' in navigator){
   loadRecord();
   updateHUD();
 
-  const newBtn = document.getElementById('new-btn');
+  const resumeBtn = document.getElementById('resume-btn');
 
-  // 메뉴(시작) 화면 — 저장본 있으면 '이어하기' + '새 게임'
+  // 메뉴(시작) 화면 — START=새 게임, 저장본 있으면 아래 작은 '이어하기'
   function showMenu(){
     running=false;
     overlayTitle.textContent='SOLAR';
     overlayStats.style.display='none';
     overlayHint.style.display='none';
-    const hasSave = !!loadProgress();
-    startBtn.textContent = hasSave ? '이어하기' : 'START';
-    newBtn.style.display = hasSave ? 'inline-block' : 'none';
+    startBtn.textContent='START';
+    resumeBtn.style.display = loadProgress() ? 'inline-block' : 'none';
     overlay.classList.remove('hidden');
   }
   function beginGame(fresh){
@@ -820,11 +812,8 @@ if('serviceWorker' in navigator){
   window.addEventListener('pagehide', saveProgress);
   window.addEventListener('beforeunload', saveProgress);
 
-  startBtn.addEventListener('click', ()=>{
-    const hasSave = !!loadProgress();
-    beginGame(!hasSave);
-  });
-  newBtn.addEventListener('click', ()=>{ clearProgress(); beginGame(true); });
+  startBtn.addEventListener('click', ()=>{ clearProgress(); beginGame(true); });
+  resumeBtn.addEventListener('click', ()=>{ beginGame(false); });
   musicBtn.addEventListener('click', ()=>{
     const o=bgm.toggle();
     sfxOn=o;
