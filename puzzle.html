@@ -119,6 +119,7 @@
 </style>
 </head>
 <body>
+<div id="dbg" style="position:fixed;left:6px;top:6px;z-index:9999;font:11px/1.4 monospace;color:#0f0;background:rgba(0,0,0,.6);padding:3px 7px;border-radius:6px;pointer-events:none;max-width:70vw;">dbg</div>
 <div id="wrap">
   <div id="field-box">
     <canvas id="game"></canvas>
@@ -238,7 +239,10 @@ if('serviceWorker' in navigator){
     try{ localStorage.setItem('puzzle-clear', JSON.stringify(arr)); }catch(e){}
   }
   // ── 풀던 레벨 기억 (나갔다 와도 그 레벨로 복귀) ──
-  function saveCurLevel(){ try{ localStorage.setItem('puzzle-cur', String(curLevel)); }catch(e){} }
+  const _dbgEl=document.getElementById('dbg');
+  function _dbg(msg){ if(_dbgEl) _dbgEl.textContent=msg; }
+  (function(){ try{ localStorage.setItem('pz-test','1'); const ok=localStorage.getItem('pz-test'); localStorage.removeItem('pz-test'); _dbg('LS '+(ok==='1'?'OK':'FAIL')); }catch(e){ _dbg('LS ERROR'); } })();
+  function saveCurLevel(){ try{ localStorage.setItem('puzzle-cur', String(curLevel)); if(_dbg)_dbg('저장됨 ✓ 레벨 '+(curLevel+1)); }catch(e){} }
   function clearCurLevel(){ try{ localStorage.removeItem('puzzle-cur'); }catch(e){} }
   function loadCurLevel(){
     try{
@@ -697,8 +701,8 @@ if('serviceWorker' in navigator){
   // 시작: 풀던 레벨이 있으면 그 레벨로 복귀, 없으면 레벨 선택 화면
   (function init(){
     const lv=loadCurLevel();
-    if(lv!==null){ resize(); startLevel(lv); }
-    else showLevelSelect();
+    if(lv!==null){ _dbg('이어하기 → 레벨 '+(lv+1)+' 복원'); resize(); startLevel(lv); }
+    else { _dbg('풀던 레벨 없음 → 레벨선택'); showLevelSelect(); }
   })();
 })();
 </script>
