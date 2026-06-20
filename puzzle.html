@@ -99,6 +99,17 @@
   }
   #classic-link:active { color:#fff; }
 
+  /* 단계 탭 */
+  #tier-tabs { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; width:min(86vw,360px); margin-bottom:2px; }
+  .tier-tab {
+    font-family:'Special Elite',monospace; font-size:clamp(11px,3vw,13px);
+    letter-spacing:0.04em; color:#8a8f8f; background:rgba(0,0,0,0.5);
+    border:1px solid #3a3f3f; border-radius:7px; padding:7px 10px; cursor:pointer;
+    flex:1; text-align:center; white-space:nowrap;
+  }
+  .tier-tab.active { color:#000; background:#e8eaea; border-color:#e8eaea; box-shadow:0 0 10px rgba(255,255,255,0.3); }
+  .tier-tab:active { transform:translateY(1px); }
+
   /* 레벨 선택 그리드 */
   #level-grid {
     display:grid; grid-template-columns:repeat(4, 1fr); gap:10px;
@@ -143,6 +154,7 @@
 <div id="overlay">
   <h1 id="overlay-title">PUZZLE</h1>
   <div class="hint" id="overlay-hint" style="display:none"></div>
+  <div id="tier-tabs"></div>
   <div id="level-grid"></div>
   <div id="overlay-btns" style="display:flex; gap:14px;"></div>
   <div style="display:flex; flex-direction:column; gap:12px; align-items:center; margin-top:8px;">
@@ -380,25 +392,52 @@ if('serviceWorker' in navigator){
   }
 
   // ───────── 레벨 선택 화면 ─────────
-  function showLevelSelect(){
-    running=false;
-    clearCurLevel();
+  const tierTabs = document.getElementById('tier-tabs');
+  const TIERS=[
+    {name:'쉬움', star:1, from:0,  to:10},
+    {name:'각도', star:2, from:10, to:20},
+    {name:'기타공', star:3, from:20, to:30},
+    {name:'대결', star:4, from:30, to:40},
+  ];
+  let curTier=0;
+
+  function renderTierGrid(){
     const cleared=loadClear();
-    overlayTitle.textContent='PUZZLE';
-    overlayHint.style.display='none';
-    overlayBtns.innerHTML='';
+    const T=TIERS[curTier];
     levelGrid.style.display='grid';
     levelGrid.innerHTML='';
-    for(let i=0;i<LEVELS.length;i++){
+    for(let i=T.from;i<T.to;i++){
       const b=document.createElement('div');
       b.className='lv-btn';
-      const unlocked = i===0 || cleared[i-1];
+      // 각 단계의 첫 레벨은 항상 열림, 그 안에서는 이전 레벨 클리어 시 해제
+      const unlocked = (i===T.from) || cleared[i-1];
       if(cleared[i]) b.classList.add('cleared');
       if(!unlocked) b.classList.add('locked');
       b.innerHTML=(i+1)+'<div class="stars">'+starStr(LEVELS[i].star)+'</div>';
       b.addEventListener('click', ()=>{ resize(); startLevel(i); });
       levelGrid.appendChild(b);
     }
+  }
+  function renderTabs(){
+    tierTabs.innerHTML='';
+    TIERS.forEach((T,idx)=>{
+      const t=document.createElement('div');
+      t.className='tier-tab'+(idx===curTier?' active':'');
+      t.textContent=T.name+' '+starStr(T.star).slice(0,T.star);
+      t.addEventListener('click', ()=>{ curTier=idx; renderTabs(); renderTierGrid(); });
+      tierTabs.appendChild(t);
+    });
+  }
+
+  function showLevelSelect(){
+    running=false;
+    clearCurLevel();
+    overlayTitle.textContent='PUZZLE';
+    overlayHint.style.display='none';
+    overlayBtns.innerHTML='';
+    tierTabs.style.display='flex';
+    renderTabs();
+    renderTierGrid();
     overlay.classList.remove('hidden');
   }
 
@@ -407,6 +446,7 @@ if('serviceWorker' in navigator){
     clearCurLevel();
     const cleared=loadClear();
     levelGrid.style.display='none';
+    tierTabs.style.display='none';
     overlayHint.style.display='block';
     overlayBtns.innerHTML='';
 
