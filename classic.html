@@ -155,7 +155,7 @@ if('serviceWorker' in navigator){
   const BALL_START_NUM = 3;
   const DECEL = 0.075;             // 선형 감속: 일정하게 미끄러지다 딱 멈춤 (당구 느낌)
   const STOP_SPEED = 0.05;
-  const RESTITUTION = 1.25;        // 1보다 크게: 부딪힌 공이 서로 튕겨나가는 탄력
+  const RESTITUTION = 1.1;         // 1보다 살짝 크게: 정면 충돌 시 친 공이 약간만 튕김
   const WALL_BOUNCE = 0.95;
   const MAX_POWER = 20;            // 발사 최대 속도
   const POP_RANGE = 1.45;          // 같은 색은 이 배율 거리 안으로 가까워지면 터짐
@@ -555,6 +555,8 @@ if('serviceWorker' in navigator){
 
     // ── 서브스텝: 한 프레임을 잘게 쪼개 빠른 공도 충돌을 놓치지 않게 ──
     const SUB = 4;
+    // 이번 프레임에 팝 반동을 이미 받은 공 표시 초기화 (연쇄 시 반동 누적 방지)
+    for(const b of balls) b.popKicked=false;
     for(let s=0; s<SUB; s++){
       // 이동 + 벽 + 게임오버 판정
       for(const b of balls){
@@ -593,10 +595,11 @@ if('serviceWorker' in navigator){
               sparks((a.x+c.x)/2, (a.y+c.y)/2, a.color, 16, 2.6);
               sparks((a.x+c.x)/2, (a.y+c.y)/2, '#ffffff', 6, 1.8);
               // 터지는 반동: 두 공이 서로 밀려남 (남은 공도 움직이게)
+              // 단, 한 공이 한 프레임에 여러 번 반동받아 과속하지 않도록 1회로 제한
               if(dist>0.0001){
                 const knx=dx/dist, kny=dy/dist, kn=1.5;
-                a.vx-=knx*kn; a.vy-=kny*kn;
-                c.vx+=knx*kn; c.vy+=kny*kn;
+                if(!a.popKicked){ a.vx-=knx*kn; a.vy-=kny*kn; a.popKicked=true; }
+                if(!c.popKicked){ c.vx+=knx*kn; c.vy+=kny*kn; c.popKicked=true; }
               }
               levelCheck();
               pairCooldown.set(key, POP_TICK);
