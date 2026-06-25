@@ -155,7 +155,7 @@ if('serviceWorker' in navigator){
   const BALL_START_NUM = 3;
   const DECEL = 0.075;             // 선형 감속: 일정하게 미끄러지다 딱 멈춤 (당구 느낌)
   const STOP_SPEED = 0.05;
-  const RESTITUTION = 1.0;         // 당구처럼 속도를 그대로 전달 (증폭 없음, 정면 충돌 시 친 공 멈춤)
+  const RESTITUTION = 0.9;         // 1보다 작게: 부딪힐 때 속도가 약간 흡수돼 충돌이 부드러움
   const WALL_BOUNCE = 0.95;
   const MAX_POWER = 20;            // 발사 최대 속도
   const POP_RANGE = 1.45;          // 같은 색은 이 배율 거리 안으로 가까워지면 터짐
@@ -600,7 +600,7 @@ if('serviceWorker' in navigator){
                 const knx=dx/dist, kny=dy/dist;
                 // 두 공의 평균 속도에 비례하되, 0.6~1.2 범위로 제한 (예전 1.5보다 약함)
                 const avgSp=(Math.hypot(a.vx,a.vy)+Math.hypot(c.vx,c.vy))*0.5;
-                const kn=Math.max(0.6, Math.min(1.2, avgSp*0.35));
+                const kn=Math.max(0.4, Math.min(0.7, avgSp*0.25));
                 if(!a.popKicked){ a.vx-=knx*kn; a.vy-=kny*kn; a.popKicked=true; }
                 if(!c.popKicked){ c.vx+=knx*kn; c.vy+=kny*kn; c.popKicked=true; }
               }
@@ -619,7 +619,10 @@ if('serviceWorker' in navigator){
             // 운동량 전달 (정면으로 치면 맞은 공이 속도를 거의 다 가져감)
             const rel=(c.vx-a.vx)*nx+(c.vy-a.vy)*ny;
             if(rel<0){
-              const jval=rel*(1+RESTITUTION)/2;
+              // 순간 충격 상한: 한 번의 충돌로 전달되는 속도 변화를 제한 → "확 세짐" 방지
+              let jval=rel*(1+RESTITUTION)/2;
+              const JMAX=6;                       // 한 번 충돌 임펄스 상한
+              if(jval<-JMAX) jval=-JMAX;
               a.vx+=jval*nx;
               a.vy+=jval*ny;
               c.vx-=jval*nx;
