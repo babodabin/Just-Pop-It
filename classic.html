@@ -155,7 +155,7 @@ if('serviceWorker' in navigator){
   const BALL_START_NUM = 3;
   const DECEL = 0.075;             // 선형 감속: 일정하게 미끄러지다 딱 멈춤 (당구 느낌)
   const STOP_SPEED = 0.05;
-  const RESTITUTION = 1.1;         // 1보다 살짝 크게: 정면 충돌 시 친 공이 약간만 튕김
+  const RESTITUTION = 1.0;         // 당구처럼 속도를 그대로 전달 (증폭 없음, 정면 충돌 시 친 공 멈춤)
   const WALL_BOUNCE = 0.95;
   const MAX_POWER = 20;            // 발사 최대 속도
   const POP_RANGE = 1.45;          // 같은 색은 이 배율 거리 안으로 가까워지면 터짐
