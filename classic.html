@@ -621,6 +621,8 @@ if('serviceWorker' in navigator){
             if(rel<0){
               // 순간 충격 상한: 발사 최대치 수준 → 정면 충돌은 깔끔히 전달, 과속은 전체 속도 상한이 처리
               let jval=rel*(1+RESTITUTION)/2;
+              // 이미 이번 프레임에 부딪힌 공이 또 맞으면(연쇄) 전달 임펄스를 줄여 "탁 튕김" 방지
+              if((a.hits||0)>=1 || (c.hits||0)>=1) jval*=0.5;
               const JMAX=MAX_POWER;
               if(jval<-JMAX) jval=-JMAX;
               a.vx+=jval*nx;
@@ -629,10 +631,10 @@ if('serviceWorker' in navigator){
               c.vy-=jval*ny;
 
               // 연쇄 감쇠: 이번 프레임에 이미 부딪힌 공이 또 부딪히면(2번째 반발~) 속도를 줄임
-              // → 1대1 정면은 그대로, 줄줄이 연쇄될 때만 점점 약해짐
+              // → 1대1 정면은 그대로, 줄줄이 연쇄될 때만 확실히 약해짐
               a.hits=(a.hits||0)+1;
               c.hits=(c.hits||0)+1;
-              const CHAIN_DAMP=0.7;   // 연쇄 1회당 남기는 속도 비율(작을수록 더 약해짐)
+              const CHAIN_DAMP=0.45;  // 연쇄 1회당 남기는 속도 비율(작을수록 더 약해짐)
               if(a.hits>=2){ a.vx*=CHAIN_DAMP; a.vy*=CHAIN_DAMP; }
               if(c.hits>=2){ c.vx*=CHAIN_DAMP; c.vy*=CHAIN_DAMP; }
 
