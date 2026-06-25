@@ -261,7 +261,7 @@ if('serviceWorker' in navigator){
   const FRICTION_KEEP = 0.988;
   const FRICTION_SUB = 0.028;
   const STOP_SPEED = 0.05;
-  const RESTITUTION = 1.25;
+  const RESTITUTION = 1.0;
   const WALL_BOUNCE = 0.95;
   const MAX_POWER = 20;
   const POP_RANGE = 1.45;
@@ -572,6 +572,7 @@ if('serviceWorker' in navigator){
     }
 
     const SUB = 4;
+    for(const b of balls){ b.popKicked=false; b.hits=0; }
     for(let s=0; s<SUB; s++){
       for(const b of balls){
         b.x += b.vx/SUB;
@@ -604,9 +605,11 @@ if('serviceWorker' in navigator){
               sparks((a.x+c.x)/2, (a.y+c.y)/2, '#ffffff', 6, 1.8);
               decrement(a); decrement(c);
               if(dist>0.0001){
-                const knx=dx/dist, kny=dy/dist, kn=1.5;
-                a.vx-=knx*kn; a.vy-=kny*kn;
-                c.vx+=knx*kn; c.vy+=kny*kn;
+                const knx=dx/dist, kny=dy/dist;
+                const avgSp=(Math.hypot(a.vx,a.vy)+Math.hypot(c.vx,c.vy))*0.5;
+                const kn=Math.max(0.4, Math.min(0.7, avgSp*0.25));
+                if(!a.popKicked){ a.vx-=knx*kn; a.vy-=kny*kn; a.popKicked=true; }
+                if(!c.popKicked){ c.vx+=knx*kn; c.vy+=kny*kn; c.popKicked=true; }
               }
               pairCooldown.set(key, POP_TICK);
             }
@@ -620,11 +623,21 @@ if('serviceWorker' in navigator){
 
             const rel=(c.vx-a.vx)*nx+(c.vy-a.vy)*ny;
             if(rel<0){
-              const jval=rel*(1+RESTITUTION)/2;
+              let jval=rel*(1+RESTITUTION)/2;
+              if((a.hits||0)>=1 || (c.hits||0)>=1) jval*=0.5;
+              const JMAX=MAX_POWER;
+              if(jval<-JMAX) jval=-JMAX;
               a.vx+=jval*nx;
               a.vy+=jval*ny;
               c.vx-=jval*nx;
               c.vy-=jval*ny;
+
+              // 연쇄 감쇠: 2번째 반발부터 속도 줄임 (1대1 정면은 그대로)
+              a.hits=(a.hits||0)+1;
+              c.hits=(c.hits||0)+1;
+              const CHAIN_DAMP=0.45;
+              if(a.hits>=2){ a.vx*=CHAIN_DAMP; a.vy*=CHAIN_DAMP; }
+              if(c.hits>=2){ c.vx*=CHAIN_DAMP; c.vy*=CHAIN_DAMP; }
 
               const impact=-rel;
               if(impact>0.6){
@@ -641,7 +654,8 @@ if('serviceWorker' in navigator){
     }
 
     for(const b of balls){
-      const sp = Math.hypot(b.vx,b.vy);
+      let sp = Math.hypot(b.vx,b.vy);
+      if(sp>MAX_POWER){ b.vx=b.vx/sp*MAX_POWER; b.vy=b.vy/sp*MAX_POWER; sp=MAX_POWER; }
       if(sp>0){
         const ns = Math.max(0, sp*FRICTION_KEEP - FRICTION_SUB);
         if(ns<STOP_SPEED){ b.vx=0; b.vy=0; }
