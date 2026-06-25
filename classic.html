@@ -595,9 +595,12 @@ if('serviceWorker' in navigator){
               sparks((a.x+c.x)/2, (a.y+c.y)/2, a.color, 16, 2.6);
               sparks((a.x+c.x)/2, (a.y+c.y)/2, '#ffffff', 6, 1.8);
               // 터지는 반동: 두 공이 서로 밀려남 (남은 공도 움직이게)
-              // 단, 한 공이 한 프레임에 여러 번 반동받아 과속하지 않도록 1회로 제한
+              // 고정값 대신 현재 속도 기반 + 상한 → 연쇄로 과속하지 않게
               if(dist>0.0001){
-                const knx=dx/dist, kny=dy/dist, kn=1.5;
+                const knx=dx/dist, kny=dy/dist;
+                // 두 공의 평균 속도에 비례하되, 0.6~1.2 범위로 제한 (예전 1.5보다 약함)
+                const avgSp=(Math.hypot(a.vx,a.vy)+Math.hypot(c.vx,c.vy))*0.5;
+                const kn=Math.max(0.6, Math.min(1.2, avgSp*0.35));
                 if(!a.popKicked){ a.vx-=knx*kn; a.vy-=kny*kn; a.popKicked=true; }
                 if(!c.popKicked){ c.vx+=knx*kn; c.vy+=kny*kn; c.popKicked=true; }
               }
@@ -639,7 +642,9 @@ if('serviceWorker' in navigator){
 
     // ── 감속: 빠를 땐 크게, 느릴 땐 작게 깎여서 상→하로 자연스럽게 죽음 ──
     for(const b of balls){
-      const sp = Math.hypot(b.vx,b.vy);
+      let sp = Math.hypot(b.vx,b.vy);
+      // 안전 상한: 어떤 충돌·연쇄로도 발사 최대 속도를 넘지 않게
+      if(sp>MAX_POWER){ b.vx=b.vx/sp*MAX_POWER; b.vy=b.vy/sp*MAX_POWER; sp=MAX_POWER; }
       if(sp>0){
         const ns = Math.max(0, sp*0.988 - 0.028);
         if(ns<STOP_SPEED){ b.vx=0; b.vy=0; }
