@@ -27,7 +27,7 @@
     position:fixed; inset:0; z-index:1;
     display:flex; flex-direction:column; justify-content:center; align-items:center;
     padding:max(env(safe-area-inset-top,0px),40px) 24px env(safe-area-inset-bottom);
-    gap:38px;
+    gap:32px;
   }
   /* 제목 */
   #title {
@@ -43,12 +43,12 @@
   }
 
   /* 모드 버튼들 */
-  #modes { display:flex; flex-direction:column; gap:18px; width:100%; max-width:330px; }
+  #modes { display:flex; flex-direction:column; gap:15px; width:100%; max-width:330px; }
   .mode {
     display:flex; align-items:center; justify-content:center; gap:12px;
     text-decoration:none; color:#e8eaea;
-    font-size:clamp(18px,5.2vw,24px); letter-spacing:0.16em;
-    padding:18px 20px; border-radius:10px;
+    font-size:clamp(17px,5vw,23px); letter-spacing:0.16em;
+    padding:16px 20px; border-radius:10px;
     border:2px solid var(--c); background:rgba(0,0,0,0.45);
     box-shadow:0 0 14px var(--g), inset 0 0 10px var(--g);
     transition:transform .08s ease, box-shadow .2s ease;
@@ -58,6 +58,7 @@
   .mode.classic { --c:#00e5ff; --g:rgba(0,229,255,0.30); }
   .mode.solar   { --c:#ff8400; --g:rgba(255,132,0,0.30); }
   .mode.puzzle  { --c:#39ff14; --g:rgba(57,255,20,0.28); }
+  .mode.bigbang { --c:#ff3df0; --g:rgba(255,61,240,0.30); }
 
   /* 음악 토글 */
   #music {
@@ -80,6 +81,7 @@
     <a class="mode classic" href="classic.html"><span class="ic">&#9679;</span>CLASSIC</a>
     <a class="mode solar"   href="solar.html"><span class="ic">&#9728;</span>SOLAR</a>
     <a class="mode puzzle"  href="puzzle.html"><span class="ic">&#9737;</span>PUZZLE</a>
+    <a class="mode bigbang" href="bigbang.html"><span class="ic">&#10039;</span>BIG&nbsp;BANG</a>
   </div>
   <div id="music">&#9834;&nbsp;MUSIC&nbsp;ON</div>
 </div>
