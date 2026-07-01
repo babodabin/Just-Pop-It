@@ -172,8 +172,9 @@ if('serviceWorker' in navigator){
   const RESTITUTION = 1.0;
   const WALL_BOUNCE = 0.95;
   const MAX_POWER = 13;
-  const POP_RANGE = 1.3;       // 같은 행성 근접 판정 배율
-  const POP_TICK = 22;
+  const POP_RANGE = 1.05;      // 원조: 거의 딱 붙어야(직접 맞혀야) 반응
+  const POP_TICK = 8;
+  const POP_MIN_SPEED = 1.2;   // 이 속도 이상 부딪힐 때만 축소 (가만히 붙어있으면 안 됨)
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -549,10 +550,12 @@ if('serviceWorker' in navigator){
           const dist=Math.hypot(dx,dy), minD=a.r+c.r;
           const popD=minD*POP_RANGE;
 
-          // 같은 행성: 가까이 있는 동안 일정 간격으로 계속 축소
+          // 같은 행성: 충분한 속도로 부딪힐 때만 축소 (가만히 붙어있으면 안 됨 — 원조 방식)
           if(dist<popD && a.tier===c.tier){
+            const rvx=a.vx-c.vx, rvy=a.vy-c.vy;
+            const relSpeed=Math.hypot(rvx,rvy);
             const key=a.id+'-'+c.id;
-            if(!pairCooldown.has(key)){
+            if(relSpeed>=POP_MIN_SPEED && !pairCooldown.has(key)){
               const col=PLANETS[a.tier].color;
               sparks((a.x+c.x)/2, (a.y+c.y)/2, col, 16, 2.6);
               sparks((a.x+c.x)/2, (a.y+c.y)/2, '#ffffff', 6, 1.8);

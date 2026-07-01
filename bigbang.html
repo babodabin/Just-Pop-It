@@ -155,7 +155,7 @@ if('serviceWorker' in navigator){
   const GRAVITY = 0.32;
   const FRICTION = 0.992;       // 수평 감쇠
   const REST_THRESH = 0.18;
-  const RESTITUTION = 0.18;     // 충돌 탄성 (낮게 = 잘 쌓임)
+  const RESTITUTION = 0.26;     // 충돌 탄성 (약간 높여서 완벽한 수직 쌓기 방지)
   const WALL_BOUNCE = 0.4;
   const DROP_COOLDOWN = 22;     // 연속 낙하 방지 (프레임)
   const DANGER_MARGIN = 0.5;    // 데드라인 위 여유
@@ -183,7 +183,8 @@ if('serviceWorker' in navigator){
     W = rect.width; H = rect.height;
     canvas.width = W*DPR; canvas.height = H*DPR;
     ctx.setTransform(DPR,0,0,DPR,0,0);
-    BALL_R = Math.max(9, Math.min(W,H)*0.026);
+    // 수박게임 실제 비율: 통 너비 기준으로 공 크기 결정 (가장 작은 공이 너비의 약 4.5%, 최종 태양이 약 40%)
+    BALL_R = Math.max(13, W*0.045);
     DEAD_LINE = H*0.12;
   }
   window.addEventListener('resize', resize);
@@ -404,7 +405,7 @@ if('serviceWorker' in navigator){
     balls.push({
       id: ballSeq++,
       x: x, y: dropY()-r,
-      vx: 0, vy: 0.5,
+      vx: (Math.random()*2-1)*0.35, vy: 0.5,
       tier: tier, r: r,
       merging:false, dead:false, rest:0
     });
@@ -457,7 +458,7 @@ if('serviceWorker' in navigator){
       a.tier=tier+1;
       a.r=radiusOf(a.tier);
       a.x=mx; a.y=my;
-      a.vx=(a.vx+b.vx)*0.5;
+      a.vx=(a.vx+b.vx)*0.5 + (Math.random()*2-1)*0.5;
       a.vy=(a.vy+b.vy)*0.5 - 1.0;  // 살짝 튀어오름
       a.merging=true;
       b.dead=true;
@@ -532,13 +533,14 @@ if('serviceWorker' in navigator){
           const dx=c.x-a.x, dy=c.y-a.y;
           let dist=Math.hypot(dx,dy);
           const minD=a.r+c.r;
-          if(dist>=minD) continue;
 
-          // 같은 행성 → 합체
-          if(a.tier===c.tier && !a.merging && !c.merging){
+          // 같은 행성 → 합체 (안정화 패스가 EDGE만큼 벌려놓으므로, 그 여유까지 포함해 판정)
+          if(a.tier===c.tier && !a.merging && !c.merging && dist < minD+EDGE+1){
             mergePair(a, c);
             continue;
           }
+
+          if(dist>=minD) continue;
 
           // 위치 분리
           let nx, ny;
