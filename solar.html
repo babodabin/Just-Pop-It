@@ -153,16 +153,16 @@ if('serviceWorker' in navigator){
   // ───────── 행성 정의 (크기 순) ─────────
   // size: 기본 반지름 배율 / 같은 행성끼리 부딪히면 tier-1로 축소, tier 0(달)끼리는 소멸
   const PLANETS=[
-    {name:'달',     color:'#ececec', size:0.62},
-    {name:'수성',   color:'#9fb4c7', size:0.72},
-    {name:'화성',   color:'#ff1744', size:0.82},
-    {name:'금성',   color:'#ffe600', size:0.95},
-    {name:'지구',   color:'#2979ff', size:1.08},
-    {name:'해왕성', color:'#00e5ff', size:1.22},
-    {name:'천왕성', color:'#39ff14', size:1.38},
-    {name:'토성',   color:'#ff9100', size:1.62, ring:true},
-    {name:'목성',   color:'#ff3df0', size:1.88},
-    {name:'태양',   color:'#ffd23b', size:2.25, sun:true}
+    {name:'달',     color:'#ececec', size:0.60},
+    {name:'수성',   color:'#9fb4c7', size:0.66},
+    {name:'화성',   color:'#ff1744', size:0.72},
+    {name:'금성',   color:'#ffe600', size:0.82},
+    {name:'지구',   color:'#2979ff', size:0.85},
+    {name:'해왕성', color:'#00e5ff', size:1.25},
+    {name:'천왕성', color:'#39ff14', size:1.30},
+    {name:'토성',   color:'#ff9100', size:2.00, ring:true},
+    {name:'목성',   color:'#ff3df0', size:2.30},
+    {name:'태양',   color:'#ffd23b', size:5.90, sun:true}
   ];
 
   const FRICTION_KEEP = 0.988;
@@ -197,7 +197,7 @@ if('serviceWorker' in navigator){
     W = rect.width; H = rect.height;
     canvas.width = W*DPR; canvas.height = H*DPR;
     ctx.setTransform(DPR,0,0,DPR,0,0);
-    BALL_R = Math.max(13, Math.min(W,H)*0.040);
+    BALL_R = Math.max(15, Math.min(W,H)*0.055);
   }
   window.addEventListener('resize', resize);
   resize();
@@ -320,7 +320,7 @@ if('serviceWorker' in navigator){
   function maxTier(){ return Math.min(level, PLANETS.length)-1; }
   function randTier(){ return Math.floor(Math.random()*(maxTier()+1)); }
   function radiusOf(tier){ return BALL_R*PLANETS[tier].size; }
-  function massOf(tier){ const r=PLANETS[tier].size; return r*r*r; }   // 부피 기준: 태양 vs 달 = 약 48배
+  function massOf(tier){ const r=PLANETS[tier].size; return r*r; }   // 면적 기준: 태양이 무겁되 과하지 않게
 
   function refillQueue(){
     while(queue.length<4) queue.push(randTier());
