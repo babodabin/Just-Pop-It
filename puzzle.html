@@ -145,6 +145,7 @@
     <div id="launcher"><div class="q-ball" id="launcher-ball"></div></div>
     <div id="right-area">
       <div id="puzzle-label">PUZZLE</div>
+      <div class="bar-btn" id="music-btn">&#9834;&nbsp;ON</div>
       <div class="bar-btn" id="retry-btn">RETRY</div>
       <div class="bar-btn" id="levels-btn">BACK</div>
     </div>
@@ -176,7 +177,7 @@ if('serviceWorker' in navigator){
   // 색: c=청록 r=빨강 y=노랑 g=초록 / field: [색, 숫자, x비율, y비율] / shots: [색, 숫자]
   const C={c:'#00e5ff', r:'#ff1744', y:'#ffe600', g:'#39ff14', x:'#5a5f66'};
   const LEVELS=[
-    {star:1, field:[['g',1,0.5,0.2],['g',2,0.5,0.34]], shots:[['g',3]],
+    {star:1, field:[['g',2,0.5,0.2],['g',1,0.5,0.34]], shots:[['g',3]],
      tip:'직선으로 관통시키세요.'},
     {star:1, field:[['g',2,0.5,0.2]], shots:[['g',2]],
      tip:'직선으로 관통시키세요.'},
@@ -192,9 +193,9 @@ if('serviceWorker' in navigator){
      tip:'직선으로 관통시키세요.'},
     {star:1, field:[['c',2,0.5,0.2]], shots:[['c',2]],
      tip:'직선으로 관통시키세요.'},
-    {star:1, field:[['g',1,0.5,0.2],['g',2,0.5,0.34]], shots:[['g',3]],
+    {star:1, field:[['g',2,0.5,0.2],['g',1,0.5,0.34]], shots:[['g',3]],
      tip:'직선으로 관통시키세요.'},
-    {star:1, field:[['y',1,0.5,0.2],['y',2,0.5,0.34]], shots:[['y',3]],
+    {star:1, field:[['y',2,0.5,0.2],['y',1,0.5,0.34]], shots:[['y',3]],
      tip:'직선으로 관통시키세요.'},
     {star:2, field:[['g',1,0.85,0.21]], shots:[['g',1]],
      tip:'벽에 튕겨 구석을 노리세요.'},
@@ -317,8 +318,10 @@ if('serviceWorker' in navigator){
 
   // ───────── 사운드 ─────────
   let audioCtx=null;
-  const SFX_VOL=0.5;
+  let sfxOn=true;
+  const SFX_VOL=0.7;
   function sound(freq, dur, type, vol){
+    if(!sfxOn) return;
     try{
       if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
       const o=audioCtx.createOscillator(), g=audioCtx.createGain();
@@ -534,7 +537,7 @@ if('serviceWorker' in navigator){
       b.dead=true;
       sound(520, 0.16, 'sine', 0.2);
     }else{
-      sound(330, 0.07, 'square', 0.07);
+      sound(330, 0.07, 'square', 0.035);
     }
   }
 
@@ -815,6 +818,17 @@ if('serviceWorker' in navigator){
   // ───────── 버튼 ─────────
   retryBtn.addEventListener('click', ()=>{ if(LEVELS[curLevel]){ resize(); startLevel(curLevel); } });
   levelsBtn.addEventListener('click', showLevelSelect);
+
+  // ♪ 소리 켜기/끄기 (다른 모드와 같은 jpi-music 설정 공유)
+  const musicBtn = document.getElementById('music-btn');
+  function renderSfx(){ musicBtn.innerHTML='&#9834;&nbsp;'+(sfxOn?'ON':'OFF'); }
+  try{ sfxOn = localStorage.getItem('jpi-music')!=='off'; }catch(e){}
+  renderSfx();
+  musicBtn.addEventListener('click', ()=>{
+    sfxOn=!sfxOn;
+    renderSfx();
+    try{ localStorage.setItem('jpi-music', sfxOn?'on':'off'); }catch(e){}
+  });
 
   // 시작: 풀던 레벨이 있으면 그 레벨로 복귀, 없으면 레벨 선택 화면
   (function init(){

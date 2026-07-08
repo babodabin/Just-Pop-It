@@ -337,27 +337,27 @@ if('serviceWorker' in navigator){
     scoreVal.textContent=score;
   }
 
-  // ── 기록 저장 (SOLAR 전용 키) ──
+  // ── 기록 저장 (BIG BANG 전용 키) ──
   function loadRecord(){
-    try{ record = parseInt(localStorage.getItem('solar-record')) || 0; }
+    try{ record = parseInt(localStorage.getItem('bb-record')) || 0; }
     catch(e){ record = 0; }
   }
   function loadHistory(){
-    try{ return JSON.parse(localStorage.getItem('solar-history')) || []; }
+    try{ return JSON.parse(localStorage.getItem('bb-history')) || []; }
     catch(e){ return []; }
   }
   function saveScore(){
     try{
-      localStorage.setItem('solar-record', String(record));
+      localStorage.setItem('bb-record', String(record));
       const h = loadHistory();
       h.push({ s: score, d: new Date().toISOString().slice(0,10) });
       h.sort((x,y)=>y.s-x.s);
-      localStorage.setItem('solar-history', JSON.stringify(h.slice(0,5)));
+      localStorage.setItem('bb-history', JSON.stringify(h.slice(0,5)));
     }catch(e){}
   }
 
   // ── 진행 중 게임 자동 저장/복원 ──
-  const SAVE_KEY='solar-save';
+  const SAVE_KEY='bb-save';
   function saveProgress(){
     if(!running) return;
     try{
