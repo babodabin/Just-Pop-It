@@ -151,6 +151,8 @@ if('serviceWorker' in navigator){
   ];
   // 떨어뜨릴 수 있는 종류: 명왕성~금성(0~4)까지만. 그 위는 합체로만.
   const DROP_MAX_TIER = 4;
+  // 등장 비중: 작은 행성일수록 훨씬 자주, 큰 행성일수록 드물게 (전부 동일 확률 금지)
+  const DROP_WEIGHTS = [40, 27, 17, 10, 6]; // tier 0(명왕성)~4(금성), 합계 100
 
   const GRAVITY = 0.32;
   const FRICTION = 0.992;       // 수평 감쇠
@@ -307,7 +309,15 @@ if('serviceWorker' in navigator){
 
   function radiusOf(tier){ return BALL_R*PLANETS[tier].size; }
   function massOf(tier){ const r=PLANETS[tier].size; return r*r; }  // 면적 비례
-  function randDropTier(){ return Math.floor(Math.random()*(DROP_MAX_TIER+1)); }
+  function randDropTier(){
+    const total = DROP_WEIGHTS.reduce((a,b)=>a+b,0);
+    let r = Math.random()*total;
+    for(let i=0;i<DROP_WEIGHTS.length;i++){
+      if(r<DROP_WEIGHTS[i]) return i;
+      r -= DROP_WEIGHTS[i];
+    }
+    return 0;
+  }
 
   function refillQueue(){
     while(queue.length<3) queue.push(randDropTier());
