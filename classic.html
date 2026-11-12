@@ -151,7 +151,7 @@ if('serviceWorker' in navigator){
   // ───────── 기본 설정 ─────────
   const COLORS = ['#00e5ff','#39ff14','#fff200','#ff8400','#ff1744','#ff3df0','#2255ff','#f0f0f0'];
   // 무늬 보조 단서: 색만으로 헷갈리는 형제들에게 테두리 스타일 차이를 줌
-  const RING_STYLE = { '#ff8400':'dash', '#2255ff':'double' };   // 주황=점선, 파랑=이중링
+  const RING_STYLE = { '#ff8400':'dash', '#2255ff':'double', '#f0f0f0':'double' };   // 주황=점선, 파랑·흰색=이중링 (흰색은 노랑과 구분)
   const BALL_START_NUM = 3;
   const DECEL = 0.075;             // 선형 감속: 일정하게 미끄러지다 딱 멈춤 (당구 느낌)
   const STOP_SPEED = 0.05;
