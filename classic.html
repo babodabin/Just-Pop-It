@@ -703,15 +703,20 @@ if('serviceWorker' in navigator){
   function drawBall(b){
     ctx.save();
     ctx.translate(b.x,b.y);
+    const dashed = RING_STYLE[b.color]==='dash';
     ctx.shadowColor=b.color;
-    ctx.shadowBlur=10;
+    ctx.shadowBlur = dashed ? 0 : 10;   // 점선 공은 빛 번짐이 틈을 메워 실선처럼 보이지 않게
     ctx.beginPath();
     ctx.arc(0,0,b.r,0,Math.PI*2);
     ctx.fillStyle='rgba(0,0,0,0.85)';
     ctx.fill();
     ctx.lineWidth=2.4;
     ctx.strokeStyle=b.color;
-    if(RING_STYLE[b.color]==='dash') ctx.setLineDash([5,3.5]);
+    if(dashed){
+      const seg = Math.PI*2*b.r/8;      // 둘레를 8칸으로 정확히 나눠 이음매 없이
+      ctx.setLineDash([seg*0.55, seg*0.45]);
+      ctx.shadowBlur=2;
+    }
     ctx.stroke();
     ctx.setLineDash([]);
     if(RING_STYLE[b.color]==='double'){
