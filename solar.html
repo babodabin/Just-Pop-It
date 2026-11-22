@@ -13,11 +13,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html, body { height:100%; overflow:hidden; background:#0a1630; }
+  html, body { height:100%; overflow:hidden; background:#000; }
   body {
     font-family:'Special Elite', monospace;
     touch-action:none; user-select:none; -webkit-user-select:none;
-    color:#a9bad8;
+    color:#9a9f9f;
   }
   #wrap {
     position:fixed; inset:0; display:flex; flex-direction:column;
@@ -30,9 +30,9 @@
   }
   #field-box {
     flex:none; position:relative;
-    border:2px solid rgba(200,225,255,0.85);
+    border:2px solid rgba(255,255,255,0.85);
     border-radius:6px;
-    box-shadow:0 0 18px rgba(120,180,255,0.35);
+    box-shadow:0 0 18px rgba(255,255,255,0.35), inset 0 0 14px rgba(255,255,255,0.12);
     overflow:hidden;
   }
   #game { position:absolute; inset:0; width:100%; height:100%; display:block; }
@@ -41,7 +41,7 @@
     height:96px; position:relative;
     display:flex; align-items:flex-start; justify-content:space-between;
     padding:14px 16px 0 16px;
-    color:#a9bad8;
+    color:#9a9f9f;
     font-size:clamp(14px, 4vw, 18px);
     letter-spacing:0.12em;
   }
@@ -55,10 +55,10 @@
   #launcher {
     position:absolute; left:50%; top:-22px; transform:translateX(-50%);
     width:44px; height:44px; border-radius:50%;
-    border:2.5px solid rgba(220,235,255,0.9);
-    box-shadow:0 0 10px rgba(140,190,255,0.5);
+    border:2.5px solid rgba(255,255,255,0.9);
+    box-shadow:0 0 10px rgba(255,255,255,0.5);
     display:flex; align-items:center; justify-content:center;
-    background:#0e1f42;
+    background:#000;
   }
   #launcher .q-ball { width:38px; height:38px; }
   #launcher-name {
@@ -71,7 +71,7 @@
   #overlay {
     position:fixed; inset:0; z-index:10;
     display:flex; flex-direction:column; justify-content:center; align-items:center; gap:20px;
-    background:rgba(6,14,34,0.62);   /* 반투명: 뒤의 우주가 비침 */
+    background:rgba(0,0,0,0.6);   /* 반투명: 뒤의 우주가 비침 */
     transition:opacity .3s ease;
   }
   #overlay.hidden { opacity:0; pointer-events:none; }
@@ -110,8 +110,8 @@
   #classic-link:active { color:#fff; }
   .ov-links { order:4; display:flex; gap:22px; margin-top:22px; }
   .ov-links span {
-    color:#a9bad8; font-size:clamp(13px,3.8vw,16px); letter-spacing:0.15em; cursor:pointer;
-    border-bottom:1px solid #3a4a6a; padding-bottom:2px;
+    color:#9a9f9f; font-size:clamp(13px,3.8vw,16px); letter-spacing:0.15em; cursor:pointer;
+    border-bottom:1px solid #3a3f3f; padding-bottom:2px;
   }
   .ov-links span:active { color:#fff; }
 </style>
@@ -164,19 +164,20 @@ if('serviceWorker' in navigator){
 <script>
 (function(){
   // ───────── 행성 정의 (크기 순) ─────────
-  // size: 기본 반지름 배율 / 같은 행성끼리 부딪히면 tier-1로 축소, tier 0(달)끼리는 소멸
-  // color: 불꽃·이름표에 쓰는 대표색 (행성 그림 자체는 paintPlanet에서 그림)
+  // size: 기본 반지름 배율 — 규칙: 한 단계마다 약 1.21배씩 커짐 (태양만 특별히 큼)
+  // 같은 행성끼리 부딪히면 tier-1로 축소, tier 0(달)끼리는 소멸
+  // color: 불꽃·후광·이름표에 쓰는 대표색 (행성 그림 자체는 makeTexture에서 그림)
   const PLANETS=[
     {name:'달',     color:'#e6e9ef', size:0.60},
-    {name:'수성',   color:'#b39a84', size:0.66},
-    {name:'화성',   color:'#e8602f', size:0.72},
-    {name:'금성',   color:'#f2c46d', size:0.82},
-    {name:'지구',   color:'#4a90ee', size:0.85},
-    {name:'해왕성', color:'#5c7cf0', size:1.25},
-    {name:'천왕성', color:'#8ee3ef', size:1.30},
-    {name:'토성',   color:'#ead39c', size:2.00},
-    {name:'목성',   color:'#dda56c', size:2.30},
-    {name:'태양',   color:'#ffd23b', size:5.90}
+    {name:'수성',   color:'#b39a84', size:0.73},
+    {name:'화성',   color:'#e8602f', size:0.88},
+    {name:'금성',   color:'#f2c46d', size:1.06},
+    {name:'지구',   color:'#4a90ee', size:1.29},
+    {name:'해왕성', color:'#5c7cf0', size:1.56},
+    {name:'천왕성', color:'#8ee3ef', size:1.88},
+    {name:'토성',   color:'#ead39c', size:2.28},
+    {name:'목성',   color:'#dda56c', size:2.76},
+    {name:'태양',   color:'#ffd23b', size:4.50}
   ];
 
   const FRICTION_KEEP = 0.988;
@@ -353,15 +354,21 @@ if('serviceWorker' in navigator){
     while(queue.length<4) queue.push(randTier());
     renderQueue();
   }
-  // 대기열도 필드와 같은 paintPlanet으로 그림 (큰 행성일수록 조금 크게, 고리·빛까지 칸 안에 들어가게)
+  // 대기열도 필드와 같은 방식으로 그림 (큰 행성일수록 조금 크게, 고리·빛까지 칸 안에 들어가게)
   function paintQueuePlanet(cv, tier){
     const css = cv.clientWidth || 32;
     const d = Math.min(window.devicePixelRatio||1, 2);
     cv.width = Math.round(css*d); cv.height = Math.round(css*d);
+    const pad = tier===9 ? 1.75 : padOf(tier);
+    const r = Math.min(css*0.42*Math.min(1, 0.55+0.16*PLANETS[tier].size), css/2/pad);
+    const tex = texture(tier), map = sphereMap(Math.max(3, Math.round(r*d)), tex, tier===9);
+    const surf = document.createElement('canvas'); surf.width = surf.height = map.size;
+    const sc = surf.getContext('2d'), img = sc.createImageData(map.size, map.size);
+    paintSurface(map, tex, 0, img); sc.putImageData(img, 0, 0);
     const c = cv.getContext('2d');
     c.setTransform(d,0,0,d, css*d/2, css*d/2);
-    const r = Math.min(css*0.42*Math.min(1, 0.6+0.17*PLANETS[tier].size), css/2/PAD[tier]);
-    paintPlanet(c, tier, r);
+    if(tier===9) sunCorona(c, r, 0);
+    composePlanet(c, tier, r, surf);
   }
   function renderQueue(){
     paintQueuePlanet(launcherBallEl, queue[0]);
@@ -423,10 +430,12 @@ if('serviceWorker' in navigator){
     balls=d.balls||[]; particles=d.particles||[];
     level=d.level||1; popped=d.popped||0; until=d.until||quotaFor(level);
     queue=d.queue; ballSeq=d.ballSeq||0; record=d.record||record;
+    // 행성 크기 표가 바뀌었을 수 있으니 반지름은 항상 지금 기준으로 다시 맞춤
+    for(const b of balls) b.r = radiusOf(b.tier);
     // 필드 크기를 고정하기 전(화면 픽셀 기준)에 저장된 게임은 새 필드 안으로 옮겨 놓음
     if(d.fw!==W || d.fh!==H){
       for(const b of balls){
-        b.r = radiusOf(b.tier); b.vx = 0; b.vy = 0;
+        b.vx = 0; b.vy = 0;
         b.x = Math.max(b.r, Math.min(W-b.r, b.x));
         b.y = Math.max(b.r, Math.min(H-b.r-BALL_R*3, b.y));
       }
@@ -689,8 +698,8 @@ if('serviceWorker' in navigator){
   // ───────── 그리기 ─────────
   function drawHUD(){
     ctx.save();
-    ctx.globalAlpha=0.24;
-    ctx.fillStyle='#dbe8ff';
+    ctx.globalAlpha=0.42;
+    ctx.fillStyle='#5e6363';
     ctx.textAlign='center';
     ctx.textBaseline='middle';
     const labelSize=Math.min(W*0.058, 24);
@@ -709,7 +718,7 @@ if('serviceWorker' in navigator){
     ctx.restore();
   }
 
-  // ───────── 우주 배경 (파란 그라데이션 + 성운 + 별) — 한 번 그려 두고 재사용 ─────────
+  // ───────── 우주 배경 (어두운 우주 + 옅은 성운 + 별) — 한 번 그려 두고 재사용 ─────────
   function seeded(seed){
     return function(){
       seed = (seed + 0x6D2B79F5) | 0;
@@ -723,24 +732,20 @@ if('serviceWorker' in navigator){
     cv.width=canvas.width; cv.height=canvas.height;
     const c=cv.getContext('2d');
     c.setTransform(SCALE*DPR,0,0,SCALE*DPR,0,0);
-    const g=c.createLinearGradient(0,0,0,H);
-    g.addColorStop(0,'#1b3263'); g.addColorStop(0.5,'#22528f'); g.addColorStop(1,'#122a55');
-    c.fillStyle=g; c.fillRect(0,0,W,H);
+    c.fillStyle='#04060c'; c.fillRect(0,0,W,H);
     const glow=(x,y,rad,col)=>{
       const rg=c.createRadialGradient(x,y,0,x,y,rad);
       rg.addColorStop(0,col); rg.addColorStop(1,'rgba(0,0,0,0)');
       c.fillStyle=rg; c.fillRect(0,0,W,H);
     };
-    glow(W*0.1, H*0.58, W*0.75, 'rgba(90,185,240,0.38)');
-    glow(W*0.9, H*0.18, W*0.6,  'rgba(130,160,255,0.20)');
+    glow(W*0.15, H*0.62, W*0.8, 'rgba(70,45,130,0.12)');
+    glow(W*0.85, H*0.2,  W*0.7, 'rgba(30,75,150,0.12)');
     const rnd=seeded(7);
-    for(let i=0;i<70;i++){
-      c.fillStyle='rgba(170,215,255,'+(0.08+rnd()*0.22).toFixed(2)+')';
-      c.beginPath(); c.arc(rnd()*W, rnd()*H, 1+rnd()*3.5, 0, Math.PI*2); c.fill();
-    }
-    for(let i=0;i<170;i++){
-      c.fillStyle='rgba(255,255,255,'+(0.35+rnd()*0.6).toFixed(2)+')';
-      c.beginPath(); c.arc(rnd()*W, rnd()*H, 0.4+rnd()*1.1, 0, Math.PI*2); c.fill();
+    for(let i=0;i<190;i++){
+      const tint = rnd();
+      const col = tint<0.12 ? '170,200,255' : tint<0.2 ? '255,215,170' : '255,255,255';
+      c.fillStyle='rgba('+col+','+(0.25+rnd()*0.7).toFixed(2)+')';
+      c.beginPath(); c.arc(rnd()*W, rnd()*H, 0.35+rnd()*1.05, 0, Math.PI*2); c.fill();
     }
     return cv;
   }
@@ -749,182 +754,285 @@ if('serviceWorker' in navigator){
     ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(bgCache,0,0); ctx.restore();
   }
 
-  // ───────── 행성 그림 (밝은 실사풍) ─────────
-  // PAD: 반지름 대비 그림 전체 크기(고리·햇빛 포함)
-  const PAD=[1.08,1.08,1.08,1.08,1.12,1.12,1.5,1.7,1.08,1.55];
+  // ───────── 행성 ─────────
+  // 행성마다 펼친 지도(질감)를 만들어 두고, 공 모양에 감아서 그림. 지도를 옆으로 밀면 천천히 자전함
+  const PERIOD=[48,40,34,70,26,22,24,16,13,0];      // 한 바퀴 도는 데 걸리는 초 (태양은 표면 고정, 빛살만 회전)
+  // 규칙: 클수록 주변 빛(후광)이 더 밝고 넓어짐
+  function haloReach(t){ return 1.18 + 0.025*t; }
+  function haloAlpha(t){ return 0.07 + 0.04*t; }
+  const RINGS={
+    6:{tilt:1.25, rx:1.42, ry:0.3, layers:[[1,'rgba(225,245,255,0.75)',0.05],[1.12,'rgba(200,235,250,0.4)',0.03]]},
+    7:{tilt:-0.32, rx:1.55, ry:0.42, layers:[[1.12,'rgba(240,222,180,0.7)',0.08],[1,'rgba(222,196,140,0.92)',0.16],[0.86,'rgba(170,140,95,0.85)',0.09]]}
+  };
+  const ATMO={3:'rgba(255,220,150,0.35)', 4:'rgba(140,200,255,0.6)', 5:'rgba(140,175,255,0.5)', 6:'rgba(190,240,250,0.5)'};
+  function padOf(t){
+    if(t===9) return 1.05;
+    let p=haloReach(t)+0.02;
+    if(t===7) p=Math.max(p,1.8);
+    if(t===6) p=Math.max(p,1.64);
+    return p;
+  }
   function circlePath(c, r){ c.beginPath(); c.arc(0,0,r,0,Math.PI*2); }
-  function sphere(c, r, light, base, dark){
-    const g=c.createRadialGradient(-r*0.35,-r*0.35,r*0.05, 0,0,r);
-    g.addColorStop(0, light); g.addColorStop(0.55, base); g.addColorStop(1, dark);
-    c.fillStyle=g; circlePath(c,r); c.fill();
+  function rgba(hex, a){
+    const n=parseInt(hex.slice(1),16);
+    return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a+')';
   }
-  function shade(c, r){
-    const g=c.createRadialGradient(-r*0.3,-r*0.35,r*0.15, 0,0,r*1.02);
-    g.addColorStop(0,'rgba(255,255,255,0.22)');
-    g.addColorStop(0.4,'rgba(255,255,255,0)');
-    g.addColorStop(0.75,'rgba(0,0,25,0.12)');
-    g.addColorStop(1,'rgba(0,0,25,0.5)');
-    c.fillStyle=g; circlePath(c,r); c.fill();
-  }
-  function rim(c, r, col){
-    c.save(); c.strokeStyle=col; c.lineWidth=r*0.07; c.shadowColor=col; c.shadowBlur=r*0.3;
-    circlePath(c,r*0.98); c.stroke(); c.restore();
-  }
-  function crater(c, r, rnd, col){
-    const a=rnd()*Math.PI*2, d=Math.sqrt(rnd())*r*0.78, cr=r*(0.08+rnd()*0.13);
-    const x=Math.cos(a)*d, y=Math.sin(a)*d;
-    c.fillStyle=col; c.beginPath(); c.arc(x,y,cr,0,Math.PI*2); c.fill();
-    c.strokeStyle='rgba(255,255,255,0.35)'; c.lineWidth=Math.max(0.5,cr*0.22);
-    c.beginPath(); c.arc(x,y,cr*0.9,Math.PI*0.1,Math.PI*0.9); c.stroke();
-  }
-  function blob(c, x, y, s, rnd){
-    const n=8, pts=[];
-    for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, rr=s*(0.55+rnd()*0.7); pts.push([x+Math.cos(a)*rr, y+Math.sin(a)*rr*0.75]); }
+  function blob(c, x, y, sx, sy, rnd){
+    const n=9, pts=[];
+    for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, k=0.55+rnd()*0.7; pts.push([x+Math.cos(a)*sx*k, y+Math.sin(a)*sy*k]); }
     const mid=(p,q)=>[(p[0]+q[0])/2,(p[1]+q[1])/2];
     c.beginPath();
     const m0=mid(pts[0],pts[1]); c.moveTo(m0[0],m0[1]);
     for(let i=1;i<=n;i++){ const p=pts[i%n], m=mid(p,pts[(i+1)%n]); c.quadraticCurveTo(p[0],p[1],m[0],m[1]); }
     c.closePath(); c.fill();
   }
-  function stripes(c, r, rnd, cols, minH, maxH, alpha){
-    let y=-r; c.globalAlpha=alpha;
-    while(y<r){
-      const h=r*(minH+rnd()*(maxH-minH));
-      c.fillStyle=cols[Math.floor(rnd()*cols.length)];
-      c.fillRect(-r, y, 2*r, h); y+=h;
+
+  const textures=[];
+  function texture(tier){ return textures[tier] || (textures[tier]=makeTexture(tier)); }
+  function makeTexture(tier){
+    const w = tier>=5 ? 512 : 256, h = w/2, S = w/256;
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+    const c=cv.getContext('2d');
+    const rnd=seeded(500+tier*131);
+    const wrap=fn=>{ for(const dx of [-w,0,w]){ c.save(); c.translate(dx,0); fn(); c.restore(); } };
+    const fill=col=>{ c.fillStyle=col; c.fillRect(0,0,w,h); };
+    const speckle=(n,cols,r0,r1,a0,a1)=>{
+      for(let i=0;i<n;i++){
+        const x=rnd()*w, y=rnd()*h, rr=(r0+rnd()*(r1-r0))*S;
+        c.globalAlpha=a0+rnd()*(a1-a0); c.fillStyle=cols[(rnd()*cols.length)|0];
+        wrap(()=>{ c.beginPath(); c.arc(x,y,rr,0,Math.PI*2); c.fill(); });
+      }
+      c.globalAlpha=1;
+    };
+    const craters=(n,r0,r1,dark,light)=>{
+      for(let i=0;i<n;i++){
+        const x=rnd()*w, y=h*(0.12+rnd()*0.76), rr=(r0+rnd()*(r1-r0))*S;
+        wrap(()=>{
+          c.fillStyle=dark; c.beginPath(); c.ellipse(x,y,rr*1.3,rr,0,0,Math.PI*2); c.fill();
+          c.strokeStyle=light; c.lineWidth=Math.max(1,rr*0.3);
+          c.beginPath(); c.ellipse(x,y,rr*1.2,rr*0.92,0,Math.PI*0.05,Math.PI*0.95); c.stroke();
+        });
+      }
+    };
+    const blobs=(n,cols,sx0,sx1,y0,y1)=>{
+      for(let i=0;i<n;i++){
+        const x=rnd()*w, y=h*(y0+rnd()*(y1-y0)), sx=(sx0+rnd()*(sx1-sx0))*S, col=cols[(rnd()*cols.length)|0];
+        const seed=rnd()*1e9|0;
+        wrap(()=>{ c.fillStyle=col; blob(c,x,y,sx,sx*0.6,seeded(seed)); });
+      }
+    };
+    const bands=(cols,h0,h1,amp,alpha)=>{
+      let y=0; c.globalAlpha=alpha;
+      while(y<h){
+        const bh=(h0+rnd()*(h1-h0))*h, col=cols[(rnd()*cols.length)|0];
+        const k=1+((rnd()*3)|0), ph=rnd()*6.28, ph2=rnd()*6.28;
+        c.fillStyle=col; c.beginPath();
+        c.moveTo(0, y+Math.sin(ph)*amp*h);
+        for(let x=4;x<=w;x+=4) c.lineTo(x, y+Math.sin(x/w*Math.PI*2*k+ph)*amp*h);
+        for(let x=w;x>=0;x-=4) c.lineTo(x, y+bh+Math.sin(x/w*Math.PI*2*k+ph2)*amp*h);
+        c.closePath(); c.fill();
+        y+=bh;
+      }
+      c.globalAlpha=1;
+    };
+    const caps=(col,top,bottom)=>{
+      c.fillStyle=col;
+      const edge=(y0,dir,size)=>{
+        c.beginPath(); c.moveTo(0,y0);
+        for(let x=0;x<=w;x+=4) c.lineTo(x, y0+dir*(size+Math.sin(x/w*Math.PI*6+tier)*size*0.35)*h);
+        c.lineTo(w,y0); c.closePath(); c.fill();
+      };
+      if(top) edge(0,1,top);
+      if(bottom) edge(h,-1,bottom);
+    };
+
+    switch(tier){
+      case 0: // 달
+        fill('#b5b8be');
+        speckle(500,['#c9cbd0','#9da0a6'],1,3,0.15,0.35);
+        blobs(6,['rgba(105,108,116,0.45)'],14,30,0.25,0.75);
+        craters(28,2,6,'rgba(122,125,132,0.6)','rgba(236,237,241,0.5)');
+        break;
+      case 1: // 수성
+        fill('#8a7765');
+        speckle(600,['#9d8a77','#6d5d4f'],1,3,0.2,0.4);
+        craters(42,1.5,5,'rgba(88,74,62,0.65)','rgba(212,196,176,0.45)');
+        break;
+      case 2: // 화성
+        fill('#c4552c');
+        speckle(500,['#d66c3b','#a8421e'],1,4,0.2,0.4);
+        blobs(8,['rgba(108,38,16,0.5)'],10,26,0.25,0.75);
+        blobs(4,['rgba(235,150,90,0.35)'],12,22,0.3,0.7);
+        caps('rgba(255,255,255,0.92)',0.07,0.05);
+        break;
+      case 3: // 금성
+        fill('#d9a95a');
+        bands(['#f0d18e','#c8923f','#e6bd72'],0.05,0.12,0.03,0.55);
+        speckle(300,['#f5dca6','#b9853c'],2,6,0.08,0.18);
+        break;
+      case 4: // 지구
+        fill('#1c5bb2');
+        speckle(300,['#2a6cc4','#154b98'],3,8,0.2,0.4);
+        blobs(7,['#3d8b3d','#4a9a43','#367d38'],18,36,0.22,0.78);
+        blobs(4,['rgba(176,146,86,0.75)'],8,14,0.35,0.65);
+        caps('rgba(245,250,255,0.95)',0.08,0.08);
+        for(let i=0;i<26;i++){
+          const x=rnd()*w, y=h*(0.1+rnd()*0.8), rx=(10+rnd()*26)*S, ry=(2+rnd()*3)*S, rot=(rnd()-0.5)*0.3;
+          c.fillStyle='rgba(255,255,255,'+(0.35+rnd()*0.3).toFixed(2)+')';
+          wrap(()=>{ c.beginPath(); c.ellipse(x,y,rx,ry,rot,0,Math.PI*2); c.fill(); });
+        }
+        break;
+      case 5: // 해왕성
+        fill('#2d52c4');
+        bands(['#3a64d6','#2446ab','#4a74e0'],0.05,0.12,0.02,0.5);
+        c.fillStyle='#152c7c'; wrap(()=>{ c.beginPath(); c.ellipse(w*0.35,h*0.62,w*0.045,h*0.06,0,0,Math.PI*2); c.fill(); });
+        for(let i=0;i<8;i++){
+          const x=rnd()*w, y=h*(0.25+rnd()*0.5), rx=(12+rnd()*18)*S;
+          c.fillStyle='rgba(225,235,255,0.55)';
+          wrap(()=>{ c.beginPath(); c.ellipse(x,y,rx,1.6*S,0,0,Math.PI*2); c.fill(); });
+        }
+        break;
+      case 6: // 천왕성
+        fill('#7fd0dd');
+        bands(['#8ad8e4','#74c3d1','#93dde8'],0.08,0.18,0.01,0.35);
+        break;
+      case 7: // 토성
+        fill('#e0c487');
+        bands(['#ecd7a2','#d4b06f','#c9a262','#f0dfb2','#b8925a'],0.03,0.08,0.008,0.8);
+        break;
+      case 8: // 목성
+        fill('#d8b48a');
+        bands(['#efe0c6','#c58556','#e2c39b','#a8663f','#f3e7d2','#b97a4e'],0.035,0.09,0.012,0.9);
+        speckle(400,['#f3e7d2','#b0704a'],2,6,0.08,0.2);
+        wrap(()=>{
+          c.fillStyle='#bf543a'; c.beginPath(); c.ellipse(w*0.3,h*0.64,w*0.045,h*0.05,0,0,Math.PI*2); c.fill();
+          c.strokeStyle='rgba(245,225,200,0.7)'; c.lineWidth=2*S; c.stroke();
+        });
+        break;
+      case 9: // 태양
+        fill('#ffc93a');
+        speckle(2600,['#ffe27a','#ffb21f','#fff1a8'],0.5,1.6,0.18,0.38);
+        break;
     }
-    c.globalAlpha=1;
+    return { data:c.getImageData(0,0,w,h).data, w, h };
   }
-  // half: 'back'(행성 뒤로 가는 위쪽 절반) / 'front'(앞쪽 아래 절반)
-  function ring(c, tilt, rx, ry, layers, half){
-    c.save(); c.rotate(tilt);
+
+  // 공 모양에 지도를 감기 위한 화면 픽셀 → (경도, 위도, 밝기) 표. 빛은 왼쪽 위 앞에서 비춤
+  const LIGHT=(()=>{ const l=[-0.5,-0.45,0.74], m=Math.hypot(l[0],l[1],l[2]); return l.map(v=>v/m); })();
+  function sphereMap(R, tex, isSun){
+    const size=R*2, idx=[], lonU=[], row=[], lit=[];
+    for(let j=0;j<size;j++){
+      const ny=(j+0.5-R)/R;
+      for(let i=0;i<size;i++){
+        const nx=(i+0.5-R)/R, d=nx*nx+ny*ny;
+        if(d>=1) continue;
+        const nz=Math.sqrt(1-d), lat=Math.asin(ny), cl=Math.cos(lat);
+        const lon=Math.asin(Math.max(-1, Math.min(1, nx/cl)));
+        idx.push((j*size+i)*4);
+        lonU.push(lon/(Math.PI*2)*tex.w);
+        row.push(Math.min(tex.h-1, Math.floor((lat/Math.PI+0.5)*tex.h))*tex.w*4);
+        const dot=nx*LIGHT[0]+ny*LIGHT[1]+nz*LIGHT[2];
+        lit.push(isSun ? 0.8+0.25*nz : 0.28+0.85*Math.max(0,dot));
+      }
+    }
+    return { size, idx:Int32Array.from(idx), lonU:Float32Array.from(lonU), row:Int32Array.from(row), lit:Float32Array.from(lit) };
+  }
+  function paintSurface(map, tex, shift, img){
+    const d=img.data, t=tex.data, tw=tex.w, n=map.idx.length;
+    const idx=map.idx, lonU=map.lonU, row=map.row, lit=map.lit;
+    for(let k=0;k<n;k++){
+      let u=(lonU[k]-shift)%tw; if(u<0) u+=tw;
+      const s=row[k]+((u|0)<<2), o=idx[k], L=lit[k];
+      d[o]=t[s]*L; d[o+1]=t[s+1]*L; d[o+2]=t[s+2]*L; d[o+3]=255;
+    }
+  }
+  function drawRing(c, r, ring, half){
+    c.save(); c.rotate(ring.tilt);
     const a0 = half==='back' ? Math.PI : 0;
-    for(const [k, col, w] of layers){
-      c.strokeStyle=col; c.lineWidth=w;
-      c.beginPath(); c.ellipse(0,0,rx*k,ry*k,0,a0,a0+Math.PI); c.stroke();
+    for(const [k, col, w] of ring.layers){
+      c.strokeStyle=col; c.lineWidth=w*r;
+      c.beginPath(); c.ellipse(0,0,ring.rx*r*k,ring.ry*r*k,0,a0,a0+Math.PI); c.stroke();
     }
     c.restore();
   }
-  function withClip(c, r, fn){ c.save(); circlePath(c,r); c.clip(); fn(); c.restore(); }
+  // 후광 → 고리 뒤쪽 → 표면 → 대기 테두리 → 고리 앞쪽 순서로 겹쳐 그림
+  function composePlanet(c, tier, r, surf){
+    if(tier!==9){
+      const reach=r*haloReach(tier), g=c.createRadialGradient(0,0,r*0.9,0,0,reach);
+      g.addColorStop(0, rgba(PLANETS[tier].color, haloAlpha(tier)));
+      g.addColorStop(1, rgba(PLANETS[tier].color, 0));
+      c.fillStyle=g; circlePath(c,reach); c.fill();
+    }
+    const ring=RINGS[tier];
+    if(ring) drawRing(c,r,ring,'back');
+    c.save(); circlePath(c,r); c.clip(); c.drawImage(surf,-r,-r,r*2,r*2); c.restore();
+    if(ATMO[tier]){
+      c.save(); c.strokeStyle=ATMO[tier]; c.lineWidth=r*0.07; c.shadowColor=ATMO[tier]; c.shadowBlur=r*0.3;
+      circlePath(c,r*0.98); c.stroke(); c.restore();
+    }
+    if(ring) drawRing(c,r,ring,'front');
+  }
+  // 태양: 빛 번짐이 천천히 숨 쉬고, 빛살이 천천히 돎
+  function sunCorona(c, r, t){
+    const pulse=1+0.04*Math.sin(t*1.3);
+    const glow=c.createRadialGradient(0,0,r*0.85,0,0,r*1.7*pulse);
+    glow.addColorStop(0,'rgba(255,190,70,0.6)'); glow.addColorStop(1,'rgba(255,120,0,0)');
+    c.fillStyle=glow; circlePath(c,r*1.7*pulse); c.fill();
+    c.save(); c.rotate(t*0.06);
+    c.fillStyle='rgba(255,165,35,0.85)';
+    const rnd=seeded(99), n=26;
+    for(let i=0;i<n;i++){
+      const a=i/n*Math.PI*2, w=Math.PI/n*0.7, tip=r*(1.1+rnd()*0.16);
+      c.beginPath();
+      c.moveTo(Math.cos(a-w)*r*0.96, Math.sin(a-w)*r*0.96);
+      c.lineTo(Math.cos(a)*tip, Math.sin(a)*tip);
+      c.lineTo(Math.cos(a+w)*r*0.96, Math.sin(a+w)*r*0.96);
+      c.closePath(); c.fill();
+    }
+    c.restore();
+  }
 
-  function paintPlanet(c, tier, r){
-    const rnd=seeded(1000+tier*7919);
-    switch(tier){
-      case 0: // 달: 밝은 은회색 + 크레이터
-        sphere(c,r,'#ffffff','#e2e5ea','#8f95a0');
-        withClip(c,r,()=>{ for(let i=0;i<7;i++) crater(c,r,rnd,'rgba(140,146,158,0.6)'); });
-        shade(c,r); break;
-      case 1: // 수성: 어두운 갈회색 + 크레이터 많이
-        sphere(c,r,'#cdbba8','#9a8470','#4c3f35');
-        withClip(c,r,()=>{ for(let i=0;i<11;i++) crater(c,r,rnd,'rgba(76,62,50,0.55)'); });
-        shade(c,r); break;
-      case 2: // 화성: 주황빛 붉은색 + 어두운 지대 + 극관
-        sphere(c,r,'#ffa577','#d4542a','#7a2410');
-        withClip(c,r,()=>{
-          c.fillStyle='rgba(115,38,14,0.45)';
-          for(let i=0;i<4;i++) blob(c,(rnd()-0.5)*r*1.3,(rnd()-0.3)*r*1.1,r*0.26,rnd);
-          c.fillStyle='rgba(255,255,255,0.85)';
-          c.beginPath(); c.ellipse(0,-r*0.88,r*0.38,r*0.15,0,0,Math.PI*2); c.fill();
-        });
-        shade(c,r); break;
-      case 3: // 금성: 노란 주황 + 소용돌이 구름
-        sphere(c,r,'#fff1c4','#e9b862','#a46a26');
-        withClip(c,r,()=>{
-          for(let i=0;i<7;i++){
-            c.strokeStyle = i%2 ? 'rgba(170,108,40,0.35)' : 'rgba(255,242,205,0.5)';
-            c.lineWidth=r*0.09;
-            c.beginPath();
-            c.ellipse((rnd()-0.5)*r, (rnd()-0.5)*r*1.4, r*(0.4+rnd()*0.6), r*(0.1+rnd()*0.15), rnd()*0.6-0.3, 0, Math.PI*(0.8+rnd()));
-            c.stroke();
-          }
-        });
-        shade(c,r); break;
-      case 4: // 지구: 파란 바다 + 초록 대륙 + 흰 구름
-        sphere(c,r,'#8cc8ff','#2f74d0','#0f3576');
-        withClip(c,r,()=>{
-          c.fillStyle='#4f9e46';
-          blob(c,-r*0.35,-r*0.25,r*0.42,rnd); blob(c,r*0.35,r*0.3,r*0.34,rnd); blob(c,r*0.45,-r*0.45,r*0.22,rnd);
-          c.fillStyle='rgba(168,139,82,0.7)';
-          blob(c,-r*0.3,-r*0.15,r*0.16,rnd); blob(c,r*0.4,r*0.38,r*0.12,rnd);
-          c.fillStyle='rgba(255,255,255,0.6)';
-          for(let i=0;i<6;i++){
-            c.beginPath(); c.ellipse((rnd()-0.5)*r*1.6,(rnd()-0.5)*r*1.6,r*(0.2+rnd()*0.3),r*0.06,rnd()-0.5,0,Math.PI*2); c.fill();
-          }
-        });
-        shade(c,r); rim(c,r,'rgba(150,205,255,0.55)'); break;
-      case 5: // 해왕성: 짙은 파랑 + 옅은 띠 + 검은 점
-        sphere(c,r,'#a4bcff','#3d63d8','#16297a');
-        withClip(c,r,()=>{
-          stripes(c,r,rnd,['#5a7de8','#3354c4','#7193f2'],0.1,0.22,0.35);
-          c.fillStyle='rgba(22,44,130,0.75)';
-          c.beginPath(); c.ellipse(r*0.25,r*0.2,r*0.22,r*0.12,0,0,Math.PI*2); c.fill();
-        });
-        shade(c,r); rim(c,r,'rgba(150,180,255,0.5)'); break;
-      case 6: { // 천왕성: 청록 + 거의 세로로 선 가는 고리
-        const R=[[1,'rgba(225,245,255,0.8)',r*0.05],[1.12,'rgba(200,235,250,0.45)',r*0.03]];
-        ring(c,1.25,r*1.42,r*0.3,R,'back');
-        sphere(c,r,'#e4fbff','#8ad8e6','#3a8da1');
-        withClip(c,r,()=>stripes(c,r,rnd,['#a8e8f2','#7fcfdf'],0.15,0.3,0.25));
-        shade(c,r); rim(c,r,'rgba(190,240,250,0.5)');
-        ring(c,1.25,r*1.42,r*0.3,R,'front'); break;
-      }
-      case 7: { // 토성: 연한 금색 줄무늬 + 넓은 고리
-        const R=[[1.12,'rgba(240,222,180,0.75)',r*0.08],[1,'rgba(222,196,140,0.95)',r*0.16],[0.86,'rgba(170,140,95,0.85)',r*0.09]];
-        ring(c,-0.32,r*1.55,r*0.42,R,'back');
-        sphere(c,r,'#fff1c9','#e2c58b','#8f6f3c');
-        withClip(c,r,()=>stripes(c,r,rnd,['#d9b877','#f0dcae','#c4a066','#e8cf96'],0.07,0.16,0.55));
-        shade(c,r);
-        ring(c,-0.32,r*1.55,r*0.42,R,'front'); break;
-      }
-      case 8: // 목성: 갈색·주황 줄무늬 + 대적점
-        sphere(c,r,'#fff3df','#ddb487','#8a5a33');
-        withClip(c,r,()=>{
-          stripes(c,r,rnd,['#f1e2c8','#c98d5c','#e3c39b','#b0704a','#f5ead8'],0.07,0.15,0.75);
-          c.fillStyle='rgba(194,85,59,0.88)';
-          c.beginPath(); c.ellipse(r*0.28,r*0.32,r*0.26,r*0.15,0,0,Math.PI*2); c.fill();
-          c.strokeStyle='rgba(245,225,200,0.6)'; c.lineWidth=r*0.04; c.stroke();
-        });
-        shade(c,r); break;
-      case 9: { // 태양: 빛 번짐 + 빛살 + 밝은 노란 핵
-        const glow=c.createRadialGradient(0,0,r*0.8,0,0,r*1.55);
-        glow.addColorStop(0,'rgba(255,190,60,0.6)'); glow.addColorStop(1,'rgba(255,140,0,0)');
-        c.fillStyle=glow; circlePath(c,r*1.55); c.fill();
-        c.fillStyle='rgba(255,165,30,0.95)';
-        const n=28;
-        for(let i=0;i<n;i++){
-          const a=i/n*Math.PI*2, w=Math.PI/n*0.7, tip=r*(1.12+rnd()*0.14);
-          c.beginPath();
-          c.moveTo(Math.cos(a-w)*r*0.95, Math.sin(a-w)*r*0.95);
-          c.lineTo(Math.cos(a)*tip, Math.sin(a)*tip);
-          c.lineTo(Math.cos(a+w)*r*0.95, Math.sin(a+w)*r*0.95);
-          c.closePath(); c.fill();
-        }
-        sphere(c,r,'#fffbd6','#ffdf3d','#ff9d12');
-        withClip(c,r,()=>{
-          c.fillStyle='rgba(255,250,215,0.16)';
-          for(let i=0;i<14;i++){ c.beginPath(); c.arc((rnd()-0.5)*r*1.7,(rnd()-0.5)*r*1.7,r*(0.03+rnd()*0.06),0,Math.PI*2); c.fill(); }
-        });
-        break;
-      }
+  // 필드용: 행성 종류마다 그림 하나를 두고, 몇 프레임마다 자전시켜 다시 그림 (같은 행성은 모두 같은 그림 공유)
+  function planetEntry(tier){
+    let e=spriteCache.get(tier);
+    if(e) return e;
+    const tex=texture(tier), r=radiusOf(tier), k=SCALE*DPR;
+    const R=Math.max(4, Math.round(r*k));
+    const map=sphereMap(R, tex, tier===9);
+    const surf=document.createElement('canvas'); surf.width=surf.height=map.size;
+    const sc=surf.getContext('2d'), img=sc.createImageData(map.size, map.size);
+    const ext=r*padOf(tier), px=Math.max(2, Math.ceil(ext*2*k));
+    const sprite=document.createElement('canvas'); sprite.width=sprite.height=px;
+    e={tier, tex, r, k, map, surf, sc, img, ext, px, sprite, drawn:false};
+    spriteCache.set(tier, e);
+    return e;
+  }
+  function renderEntry(e, shift){
+    paintSurface(e.map, e.tex, shift, e.img);
+    e.sc.putImageData(e.img, 0, 0);
+    const c=e.sprite.getContext('2d');
+    c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,e.px,e.px);
+    c.setTransform(e.k,0,0,e.k,e.px/2,e.px/2);
+    composePlanet(c, e.tier, e.r, e.surf);
+    e.drawn=true;
+  }
+  let frameNo=0, animT=0;
+  function animatePlanets(now){
+    frameNo++; animT=now/1000;
+    const seen=new Set();
+    for(const b of balls) seen.add(b.tier);
+    for(const t of seen){
+      const e=planetEntry(t);
+      if(t===9){ if(!e.drawn) renderEntry(e,0); continue; }
+      if(e.drawn && (frameNo+t)%3) continue;     // 행성마다 3프레임에 한 번씩 나눠서 갱신
+      renderEntry(e, animT/PERIOD[t]*e.tex.w);
     }
   }
-
-  // 필드용 그림은 행성 종류별로 한 번만 그려서 재사용
-  function planetSprite(tier){
-    let s=spriteCache.get(tier);
-    if(s) return s;
-    const r=radiusOf(tier), ext=r*PAD[tier];
-    const px=Math.max(2, Math.ceil(ext*2*SCALE*DPR));
-    const cv=document.createElement('canvas'); cv.width=px; cv.height=px;
-    const c=cv.getContext('2d'); const k=px/(ext*2);
-    c.setTransform(k,0,0,k,px/2,px/2);
-    paintPlanet(c, tier, r);
-    s={cv, ext}; spriteCache.set(tier, s);
-    return s;
-  }
   function drawBall(b){
-    const s=planetSprite(b.tier);
-    ctx.drawImage(s.cv, b.x-s.ext, b.y-s.ext, s.ext*2, s.ext*2);
+    const e=planetEntry(b.tier);
+    if(!e.drawn) renderEntry(e,0);
+    if(b.tier===9){ ctx.save(); ctx.translate(b.x,b.y); sunCorona(ctx, e.r, animT); ctx.restore(); }
+    ctx.drawImage(e.sprite, b.x-e.ext, b.y-e.ext, e.ext*2, e.ext*2);
   }
 
   function drawAim(){
@@ -991,6 +1099,7 @@ if('serviceWorker' in navigator){
       drawHUD();
       if(running && !JPI.isOpen()) physics();
       drawAim();
+      animatePlanets(t === undefined ? performance.now() : t);
       for(const b of balls) drawBall(b);
       drawParticles();
       drawLevelFlash();
