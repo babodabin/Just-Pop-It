@@ -49,8 +49,8 @@
     background:#000;
   }
   #right-area { text-align:right; display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
-  #menu-btn, #music-btn { cursor:pointer; }
-  #menu-btn:active, #music-btn:active { color:#fff; }
+  #menu-btn, #settings-btn { cursor:pointer; }
+  #menu-btn:active, #settings-btn:active { color:#fff; }
 
   #launcher {
     position:absolute; left:50%; top:-22px; transform:translateX(-50%);
@@ -123,7 +123,7 @@
     <div id="launcher"><div class="q-ball" id="launcher-ball"></div><div id="launcher-name"></div></div>
     <div id="right-area">
       <div id="record-label">RECORD&nbsp;&nbsp;0</div>
-      <div id="music-btn">&#9834;&nbsp;OFF</div>
+      <div id="settings-btn">SETTINGS</div>
       <div id="menu-btn">BACK&nbsp;TO&nbsp;MENU</div>
     </div>
   </div>
@@ -148,6 +148,7 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+<script src="settings.js"></script>
 <script>
 (function(){
   // ───────── 행성 정의 (크기 순) ─────────
@@ -183,7 +184,7 @@ if('serviceWorker' in navigator){
   const launcherBallEl = document.getElementById('launcher-ball');
   const recordLabel = document.getElementById('record-label');
   const menuBtn = document.getElementById('menu-btn');
-  const musicBtn = document.getElementById('music-btn');
+  const settingsBtn = document.getElementById('settings-btn');
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.querySelector('#overlay h1');
   const overlayStats = document.getElementById('overlay-stats');
@@ -204,10 +205,9 @@ if('serviceWorker' in navigator){
 
   // ───────── 사운드 / 음악 (Gymnopédie 로파이) ─────────
   let audioCtx=null;
-  let sfxOn=true;
   const SFX_VOL=0.4;
   function sound(freq, dur, type, vol){
-    if(!sfxOn) return;
+    if(!JPI.on('sfx')) return;
     try{
       if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
       const o=audioCtx.createOscillator(), g=audioCtx.createGain();
@@ -463,11 +463,11 @@ if('serviceWorker' in navigator){
     if(b.tier===0){
       burst(b);
       b.dead=true;
-      sound(560, 0.16, 'sine', 0.2);
+      sound(560, 0.16, 'sine', 0.2); JPI.vibrate(25);
     }else{
       b.tier--;
       b.r=radiusOf(b.tier);
-      sound(330+b.tier*20, 0.08, 'square', 0.07);
+      sound(330+b.tier*20, 0.08, 'square', 0.07); JPI.vibrate(8);
     }
   }
 
@@ -475,7 +475,7 @@ if('serviceWorker' in navigator){
     if(until<=0){
       level++;
       until=quotaFor(level);
-      sound(660, 0.3, 'sine', 0.18);
+      sound(660, 0.3, 'sine', 0.18); JPI.vibrate([30,60,30]);
       flashLevel=1;
       saveProgress();
     }
@@ -514,6 +514,7 @@ if('serviceWorker' in navigator){
     startBtn.textContent='RETRY';
     overlay.classList.remove('hidden');
     sound(140, 0.5, 'sawtooth', 0.18);
+    JPI.vibrate(160);
   }
 
   // ───────── 물리 (질량 기반) ─────────
@@ -804,7 +805,7 @@ if('serviceWorker' in navigator){
     if(frameDue(t === undefined ? performance.now() : t)){
       drawBackground();
       drawHUD();
-      if(running) physics();
+      if(running && !JPI.isOpen()) physics();
       drawAim();
       for(const b of balls) drawBall(b);
       drawParticles();
@@ -848,9 +849,7 @@ if('serviceWorker' in navigator){
     resize();
     if(fresh){ newGame(); }
     else { const saved=loadProgress(); if(saved) restoreGame(saved); else newGame(); }
-    let wantMusic=true; try{ wantMusic = localStorage.getItem('jpi-music')!=='off'; }catch(e){}
-    if(wantMusic && !bgm.isOn()){ bgm.toggle(); sfxOn=true; musicBtn.innerHTML='&#9834;&nbsp;ON'; }
-    else if(!wantMusic){ sfxOn=false; if(bgm.isOn()) bgm.toggle(); musicBtn.innerHTML='&#9834;&nbsp;OFF'; }
+    if(JPI.on('music')!==bgm.isOn()) bgm.toggle();
   }
 
   // 앱을 끄거나 뒤로 가는 등 화면을 벗어날 때 즉시 저장
@@ -860,12 +859,9 @@ if('serviceWorker' in navigator){
 
   startBtn.addEventListener('click', ()=>{ clearProgress(); beginGame(true); });
   resumeBtn.addEventListener('click', ()=>{ beginGame(false); });
-  musicBtn.addEventListener('click', ()=>{
-    const o=bgm.toggle();
-    sfxOn=o;
-    musicBtn.innerHTML = o ? '&#9834;&nbsp;ON' : '&#9834;&nbsp;OFF';
-    try{ localStorage.setItem('jpi-music', o?'on':'off'); }catch(e){}
-  });
+  settingsBtn.addEventListener('click', ()=>JPI.openSettings((key,val)=>{
+    if(key==='music' && bgm.isOn()!==val) bgm.toggle();
+  }));
   menuBtn.addEventListener('click', ()=>{
     saveProgress();
     window.location.href='index.html';  // 첫 페이지(모드 선택)로

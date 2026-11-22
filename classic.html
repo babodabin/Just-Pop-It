@@ -29,14 +29,18 @@
   }
 
   /* ── 플레이 필드 ── */
+  #field-area {
+    flex:1; min-height:0; margin:10px 8px 6px 8px;
+    display:flex; justify-content:center; align-items:flex-end;
+  }
   #field-box {
-    flex:1; position:relative; margin:10px 8px 6px 8px;
+    flex:none; position:relative;
     border:2px solid rgba(255,255,255,0.85);
     border-radius:6px;
     box-shadow:0 0 18px rgba(255,255,255,0.35), inset 0 0 14px rgba(255,255,255,0.12);
     overflow:hidden;
   }
-  canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #game { position:absolute; inset:0; width:100%; height:100%; display:block; }
 
   /* ── 하단 바 ── */
   #bottom-bar {
@@ -49,14 +53,10 @@
   }
   #next-area { display:flex; flex-direction:column; gap:6px; }
   #next-queue { display:flex; gap:7px; margin-top:4px; }
-  .q-ball {
-    width:30px; height:30px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:17px; background:#000;
-  }
+  .q-ball { width:30px; height:30px; display:block; }
   #right-area { text-align:right; display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
-  #menu-btn, #music-btn { cursor:pointer; }
-  #menu-btn:active, #music-btn:active { color:#fff; }
+  #menu-btn, #settings-btn { cursor:pointer; }
+  #menu-btn:active, #settings-btn:active { color:#fff; }
 
   /* 발사대 (하단 중앙) */
   #launcher {
@@ -67,7 +67,7 @@
     display:flex; align-items:center; justify-content:center;
     background:#000;
   }
-  #launcher .q-ball { width:34px; height:34px; font-size:19px; }
+  #launcher .q-ball { width:38px; height:38px; }
 
   /* ── 오버레이 (메뉴 / 게임오버) ── */
   #overlay {
@@ -106,22 +106,30 @@
   }
   #overlay button.secondary:active { transform:translateY(1px); color:#aab0b0; }
   #overlay { gap:8px; }
+  .ov-links { order:4; display:flex; gap:22px; margin-top:22px; }
+  .ov-links span {
+    color:#9a9f9f; font-size:clamp(13px,3.8vw,16px); letter-spacing:0.15em; cursor:pointer;
+    border-bottom:1px solid #3a3f3f; padding-bottom:2px;
+  }
+  .ov-links span:active { color:#fff; }
 </style>
 </head>
 <body>
 <div id="wrap">
-  <div id="field-box">
-    <canvas id="game"></canvas>
+  <div id="field-area">
+    <div id="field-box">
+      <canvas id="game"></canvas>
+    </div>
   </div>
   <div id="bottom-bar">
     <div id="next-area">
       <div>NEXT</div>
       <div id="next-queue"></div>
     </div>
-    <div id="launcher"><div class="q-ball" id="launcher-ball"></div></div>
+    <div id="launcher"><canvas class="q-ball" id="launcher-ball"></canvas></div>
     <div id="right-area">
       <div id="record-label">RECORD&nbsp;&nbsp;0</div>
-      <div id="music-btn">&#9834;&nbsp;OFF</div>
+      <div id="settings-btn">SETTINGS</div>
       <div id="menu-btn">BACK&nbsp;TO&nbsp;MENU</div>
     </div>
   </div>
@@ -133,6 +141,10 @@
   <div class="hint" id="overlay-hint" style="display:none"></div>
   <button id="start-btn">START</button>
   <button id="resume-btn" style="display:none;">CONTINUE</button>
+  <div class="ov-links">
+    <span id="help-link">HOW&nbsp;TO&nbsp;PLAY</span>
+    <span id="settings-link">SETTINGS</span>
+  </div>
   <div style="order:5;display:flex; flex-direction:column; gap:14px; align-items:center; margin-top:26px;">
     <a href="index.html" style="color:#6c7171;font-size:clamp(13px,3.8vw,16px);letter-spacing:0.15em;text-decoration:none;">&#8592;&nbsp;MENU</a>
   </div>
@@ -146,6 +158,7 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+<script src="settings.js"></script>
 <script>
 (function(){
   // ───────── 기본 설정 ─────────
@@ -170,24 +183,34 @@ if('serviceWorker' in navigator){
   const launcherBallEl = document.getElementById('launcher-ball');
   const recordLabel = document.getElementById('record-label');
   const menuBtn = document.getElementById('menu-btn');
-  const musicBtn = document.getElementById('music-btn');
+  const settingsBtn = document.getElementById('settings-btn');
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlay-title');
   const overlayStats = document.getElementById('overlay-stats');
   const overlayHint = document.getElementById('overlay-hint');
   const startBtn = document.getElementById('start-btn');
 
-  let W=0, H=0, DPR=1, BALL_R=16;
+  // 논리 필드 크기 고정: 속도·마찰이 픽셀 단위라, 화면 크기를 따라가면 기기마다 난이도가 달라짐
+  const W=360, H=640;
+  const BALL_R = Math.max(14, Math.min(W,H)*0.042);
+  const BORDER = 2;
+  const fieldArea = document.getElementById('field-area');
+  let DPR=1, SCALE=1;
   function resize(){
     DPR = Math.min(window.devicePixelRatio||1, 2);
-    const rect = fieldBox.getBoundingClientRect();
-    W = rect.width; H = rect.height;
-    canvas.width = W*DPR; canvas.height = H*DPR;
-    ctx.setTransform(DPR,0,0,DPR,0,0);
-    BALL_R = Math.max(14, Math.min(W,H)*0.042);
+    const area = fieldArea.getBoundingClientRect();
+    SCALE = Math.max(0.1, Math.min((area.width-BORDER*2)/W, (area.height-BORDER*2)/H));
+    fieldBox.style.width = (W*SCALE+BORDER*2)+'px';
+    fieldBox.style.height = (H*SCALE+BORDER*2)+'px';
+    canvas.width = Math.round(W*SCALE*DPR); canvas.height = Math.round(H*SCALE*DPR);
+    ctx.setTransform(SCALE*DPR,0,0,SCALE*DPR,0,0);
+    if(queue.length) renderQueue();
+  }
+  function pointerPos(e){
+    const r = canvas.getBoundingClientRect();
+    return { x:(e.clientX-r.left)/SCALE, y:(e.clientY-r.top)/SCALE };
   }
   window.addEventListener('resize', resize);
-  resize();
 
   // ───────── 별가루 + 모눈 배경 ─────────
   let stars=[];
@@ -199,7 +222,6 @@ if('serviceWorker' in navigator){
     }
   }
   makeStars();
-  window.addEventListener('resize', makeStars);
 
   function drawBackground(){
     ctx.fillStyle='#050505';
@@ -223,10 +245,9 @@ if('serviceWorker' in navigator){
 
   // ───────── 사운드 ─────────
   let audioCtx=null;
-  let sfxOn=true;      // ♪ 버튼으로 음악과 함께 꺼짐
   const SFX_VOL=0.4;   // 효과음 전체 볼륨 (배경음악이 잘 들리도록 낮춤)
   function sound(freq, dur, type, vol){
-    if(!sfxOn) return;
+    if(!JPI.on('sfx')) return;
     try{
       if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
       const o=audioCtx.createOscillator(), g=audioCtx.createGain();
@@ -342,6 +363,7 @@ if('serviceWorker' in navigator){
   let pairCooldown = new Map();   // 같은 색 연속 팝 간격 관리
   let flashLevel=0;
   let ballSeq=0;
+  resize();
 
   function quotaFor(lv){ return lv*5; } // 5, 10, 15, 20... (원작)
   function colorPool(){ return COLORS.slice(0, Math.min(level, COLORS.length)); }
@@ -351,24 +373,24 @@ if('serviceWorker' in navigator){
     while(queue.length<4) queue.push(randColor());
     renderQueue();
   }
-  function qStyle(el, color){
-    const style = RING_STYLE[color]==='dash' ? 'dashed' : 'solid';
-    el.style.border='2px '+style+' '+color;
-    el.style.color=color;
-    let shadow='0 0 8px '+color+', inset 0 0 6px '+color;
-    if(RING_STYLE[color]==='double') shadow += ', inset 0 0 0 4px #000, inset 0 0 0 5.5px '+color;
-    el.style.boxShadow=shadow;
+  // 대기열 공도 필드와 같은 drawBallAt으로 그려서, 쏘기 전과 후의 모양·색이 똑같이 보이게 함
+  function paintQueueBall(cv, color){
+    const css = cv.clientWidth || 30;
+    const d = Math.min(window.devicePixelRatio||1, 2);
+    cv.width = Math.round(css*d); cv.height = Math.round(css*d);
+    const c = cv.getContext('2d');
+    c.setTransform(d,0,0,d,0,0);
+    c.clearRect(0,0,css,css);
+    drawBallAt(c, css/2, css/2, css*0.38, color, BALL_START_NUM);
   }
   function renderQueue(){
-    qStyle(launcherBallEl, queue[0]);
-    launcherBallEl.textContent=BALL_START_NUM;
+    paintQueueBall(launcherBallEl, queue[0]);
     nextQueueEl.innerHTML='';
     for(let i=1;i<4;i++){
-      const d=document.createElement('div');
-      d.className='q-ball';
-      qStyle(d, queue[i]);
-      d.textContent=BALL_START_NUM;
-      nextQueueEl.appendChild(d);
+      const cv=document.createElement('canvas');
+      cv.className='q-ball';
+      nextQueueEl.appendChild(cv);
+      paintQueueBall(cv, queue[i]);
     }
   }
 
@@ -400,7 +422,7 @@ if('serviceWorker' in navigator){
   function saveProgress(){
     if(!running) return;
     try{
-      const data={ balls, level, popped, until, queue, ballSeq, record };
+      const data={ balls, level, popped, until, queue, ballSeq, record, fw:W, fh:H };
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     }catch(e){}
   }
@@ -425,6 +447,14 @@ if('serviceWorker' in navigator){
     queue = d.queue;
     ballSeq = d.ballSeq || 0;
     record = d.record || record;
+    // 필드 크기를 고정하기 전(화면 픽셀 기준)에 저장된 게임은 새 필드 안으로 옮겨 놓음
+    if(d.fw!==W || d.fh!==H){
+      for(const b of balls){
+        b.r = BALL_R; b.vx = 0; b.vy = 0;
+        b.x = Math.max(b.r, Math.min(W-b.r, b.x));
+        b.y = Math.max(b.r, Math.min(H-BALL_R*4, b.y));
+      }
+    }
     pairCooldown.clear();
     running = true;
     renderQueue();
@@ -466,14 +496,14 @@ if('serviceWorker' in navigator){
   // ───────── 입력 (조준: 흰 원 + 조준선) ─────────
   fieldBox.addEventListener('pointerdown', e=>{
     if(!running) return;
-    const r = fieldBox.getBoundingClientRect();
+    const p = pointerPos(e);
     aiming=true;
-    aimX=e.clientX-r.left; aimY=e.clientY-r.top;
+    aimX=p.x; aimY=p.y;
   });
   fieldBox.addEventListener('pointermove', e=>{
     if(!aiming) return;
-    const r = fieldBox.getBoundingClientRect();
-    aimX=e.clientX-r.left; aimY=e.clientY-r.top;
+    const p = pointerPos(e);
+    aimX=p.x; aimY=p.y;
   });
   function endAim(){
     if(!aiming || !running){ aiming=false; return; }
@@ -497,8 +527,10 @@ if('serviceWorker' in navigator){
       burst(b);
       b.dead=true;
       sound(520, 0.16, 'sine', 0.2);
+      JPI.vibrate(25);
     }else{
       sound(330, 0.07, 'square', 0.07);
+      JPI.vibrate(8);
     }
   }
 
@@ -507,6 +539,7 @@ if('serviceWorker' in navigator){
       level++;
       until=quotaFor(level);
       sound(660, 0.3, 'sine', 0.18);
+      JPI.vibrate([30,60,30]);
       flashLevel=1;
       saveProgress();
     }
@@ -545,6 +578,7 @@ if('serviceWorker' in navigator){
     startBtn.textContent='RETRY';
     overlay.classList.remove('hidden');
     sound(140, 0.5, 'sawtooth', 0.18);
+    JPI.vibrate(160);
   }
 
   // ───────── 물리 ─────────
@@ -700,38 +734,39 @@ if('serviceWorker' in navigator){
   }
 
   // ───────── 그리기 ─────────
-  function drawBall(b){
-    ctx.save();
-    ctx.translate(b.x,b.y);
-    const dashed = RING_STYLE[b.color]==='dash';
-    ctx.shadowColor=b.color;
-    ctx.shadowBlur = dashed ? 0 : 10;   // 점선 공은 빛 번짐이 틈을 메워 실선처럼 보이지 않게
-    ctx.beginPath();
-    ctx.arc(0,0,b.r,0,Math.PI*2);
-    ctx.fillStyle='rgba(0,0,0,0.85)';
-    ctx.fill();
-    ctx.lineWidth=2.4;
-    ctx.strokeStyle=b.color;
+  function drawBallAt(c, x, y, r, color, n){
+    c.save();
+    c.translate(x,y);
+    const dashed = RING_STYLE[color]==='dash';
+    c.shadowColor=color;
+    c.shadowBlur = dashed ? 0 : 10;   // 점선 공은 빛 번짐이 틈을 메워 실선처럼 보이지 않게
+    c.beginPath();
+    c.arc(0,0,r,0,Math.PI*2);
+    c.fillStyle='rgba(0,0,0,0.85)';
+    c.fill();
+    c.lineWidth=2.4;
+    c.strokeStyle=color;
     if(dashed){
-      const seg = Math.PI*2*b.r/8;      // 둘레를 8칸으로 정확히 나눠 이음매 없이
-      ctx.setLineDash([seg*0.55, seg*0.45]);
-      ctx.shadowBlur=2;
+      const seg = Math.PI*2*r/8;      // 둘레를 8칸으로 정확히 나눠 이음매 없이
+      c.setLineDash([seg*0.55, seg*0.45]);
+      c.shadowBlur=2;
     }
-    ctx.stroke();
-    ctx.setLineDash([]);
-    if(RING_STYLE[b.color]==='double'){
-      ctx.beginPath();
-      ctx.arc(0,0,b.r*0.72,0,Math.PI*2);
-      ctx.lineWidth=1.6;
-      ctx.stroke();
+    c.stroke();
+    c.setLineDash([]);
+    if(RING_STYLE[color]==='double'){
+      c.beginPath();
+      c.arc(0,0,r*0.72,0,Math.PI*2);
+      c.lineWidth=1.6;
+      c.stroke();
     }
-    ctx.shadowBlur=6;
-    ctx.fillStyle=b.color;
-    ctx.font=(b.r*1.1)+'px "Special Elite", monospace';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(b.n, 0, 2);
-    ctx.restore();
+    c.shadowBlur=6;
+    c.fillStyle=color;
+    c.font=(r*1.1)+'px "Special Elite", monospace';
+    c.textAlign='center'; c.textBaseline='middle';
+    c.fillText(n, 0, 2);
+    c.restore();
   }
+  function drawBall(b){ drawBallAt(ctx, b.x, b.y, b.r, b.color, b.n); }
 
   function drawAim(){
     if(!aiming || !running) return;
@@ -818,7 +853,7 @@ if('serviceWorker' in navigator){
     if(frameDue(t === undefined ? performance.now() : t)){
       drawBackground();
       drawHUD();
-      if(running) physics();
+      if(running && !JPI.isOpen()) physics();
       drawAim();
       for(const b of balls) drawBall(b);
       drawParticles();
@@ -871,20 +906,26 @@ if('serviceWorker' in navigator){
     resize();
     if(fresh){ newGame(); }
     else { const saved=loadProgress(); if(saved) restoreGame(saved); else newGame(); }
-    // 첫 페이지 음악 설정 반영
-    let wantMusic=true; try{ wantMusic = localStorage.getItem('jpi-music')!=='off'; }catch(e){}
-    if(wantMusic && !bgm.isOn()){ bgm.toggle(); sfxOn=true; musicBtn.innerHTML='&#9834;&nbsp;ON'; }
-    else if(!wantMusic){ sfxOn=false; if(bgm.isOn()) bgm.toggle(); musicBtn.innerHTML='&#9834;&nbsp;OFF'; }
+    if(JPI.on('music')!==bgm.isOn()) bgm.toggle();
   }
 
-  startBtn.addEventListener('click', ()=>{ clearProgress(); beginGame(true); });   // 새 게임
+  const HELP = [
+    '화면을 누른 채 손가락을 움직여 조준하고, 손을 떼면 발사됩니다.',
+    '발사대에서 먼 곳을 누를수록 공이 세게 나갑니다.',
+    '같은 색 공끼리 부딪히면 두 공의 숫자가 1씩 줄고, 0이 되면 터집니다. 가만히 닿아 있기만 하면 줄지 않습니다.',
+    '다른 색 공끼리는 튕겨 나가기만 합니다.',
+    '숫자가 1 줄 때마다 UNTIL NEXT LEVEL이 1씩 줄고, 0이 되면 레벨이 오르며 새 색이 추가됩니다.',
+    '공이 아래 선 밖으로 완전히 빠져나가면 게임 오버입니다.'
+  ];
+  function onSettingChange(key, val){
+    if(key==='music' && bgm.isOn()!==val) bgm.toggle();
+  }
+
+  startBtn.addEventListener('click', ()=>{ clearProgress(); JPI.helpOnce('classic', 'HOW TO PLAY', HELP, ()=>beginGame(true)); });   // 새 게임 (처음 한 번은 설명부터)
   resumeBtn.addEventListener('click', ()=>{ beginGame(false); });                  // 이어하기
-  musicBtn.addEventListener('click', ()=>{
-    const o=bgm.toggle();
-    sfxOn=o;   // 끄면 게임 소리 전체가 꺼짐
-    musicBtn.innerHTML = o ? '&#9834;&nbsp;ON' : '&#9834;&nbsp;OFF';
-    try{ localStorage.setItem('jpi-music', o?'on':'off'); }catch(e){}
-  });
+  document.getElementById('help-link').addEventListener('click', ()=>JPI.openHelp('HOW TO PLAY', HELP));
+  document.getElementById('settings-link').addEventListener('click', ()=>JPI.openSettings(onSettingChange));
+  settingsBtn.addEventListener('click', ()=>{ aiming=false; JPI.openSettings(onSettingChange); });
   menuBtn.addEventListener('click', ()=>{
     saveProgress();              // 진행 상태 보존
     window.location.href='index.html';  // 첫 페이지(모드 선택)로

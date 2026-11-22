@@ -52,8 +52,8 @@
   #score-val { font-size:clamp(26px,8vw,40px); color:#e8eaea; letter-spacing:0.06em; line-height:1; text-shadow:0 0 10px rgba(255,255,255,0.3); }
   #score-label { font-size:clamp(10px,2.6vw,12px); color:#6c7171; letter-spacing:0.2em; }
   #right-area { text-align:right; display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
-  #menu-btn, #music-btn { cursor:pointer; }
-  #menu-btn:active, #music-btn:active { color:#fff; }
+  #menu-btn, #settings-btn { cursor:pointer; }
+  #menu-btn:active, #settings-btn:active { color:#fff; }
 
   #overlay {
     position:fixed; inset:0; z-index:10;
@@ -107,7 +107,7 @@
     </div>
     <div id="right-area">
       <div id="record-label">BEST&nbsp;&nbsp;0</div>
-      <div id="music-btn">&#9834;&nbsp;OFF</div>
+      <div id="settings-btn">SETTINGS</div>
       <div id="menu-btn">BACK&nbsp;TO&nbsp;MENU</div>
     </div>
   </div>
@@ -132,6 +132,7 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+<script src="settings.js"></script>
 <script>
 (function(){
   // ───────── 행성 정의 (작은 것 → 큰 것) = 수박게임 11단계 ─────────
@@ -170,7 +171,7 @@ if('serviceWorker' in navigator){
   const recordLabel = document.getElementById('record-label');
   const scoreVal = document.getElementById('score-val');
   const menuBtn = document.getElementById('menu-btn');
-  const musicBtn = document.getElementById('music-btn');
+  const settingsBtn = document.getElementById('settings-btn');
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.querySelector('#overlay h1');
   const overlayStats = document.getElementById('overlay-stats');
@@ -194,10 +195,9 @@ if('serviceWorker' in navigator){
 
   // ───────── 사운드 ─────────
   let audioCtx=null;
-  let sfxOn=true;
   const SFX_VOL=0.4;
   function sound(freq, dur, type, vol){
-    if(!sfxOn) return;
+    if(!JPI.on('sfx')) return;
     try{
       if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
       const o=audioCtx.createOscillator(), g=audioCtx.createGain();
@@ -461,7 +461,7 @@ if('serviceWorker' in navigator){
       // 태양끼리 → 둘 다 소멸
       burst(a); burst(b);
       a.dead=true; b.dead=true;
-      sound(720, 0.3, 'sine', 0.22);
+      sound(720, 0.3, 'sine', 0.22); JPI.vibrate([30,60,30]);
     }else{
       // a를 한 단계 키우고 중앙에 배치, b 제거
       a.dead=false;
@@ -472,7 +472,7 @@ if('serviceWorker' in navigator){
       a.vy=(a.vy+b.vy)*0.5 - 1.0;  // 살짝 튀어오름
       a.merging=true;
       b.dead=true;
-      sound(300+a.tier*40, 0.12, 'sine', 0.16);
+      sound(300+a.tier*40, 0.12, 'sine', 0.16); JPI.vibrate(15);
       if(a.tier===PLANETS.length-1){ flash(PLANETS[a.tier].name+' 완성!'); }
     }
     updateHUD();
@@ -514,6 +514,7 @@ if('serviceWorker' in navigator){
     startBtn.textContent='RETRY';
     overlay.classList.remove('hidden');
     sound(140, 0.5, 'sawtooth', 0.18);
+    JPI.vibrate(160);
   }
 
   // ───────── 물리 (중력 + 충돌 + 합체) ─────────
@@ -761,7 +762,7 @@ if('serviceWorker' in navigator){
     if(frameDue(t === undefined ? performance.now() : t)){
       drawBackground();
       drawDeadline();
-      if(running) physics();
+      if(running && !JPI.isOpen()) physics();
       for(const b of balls) drawBall(b);
       drawGuide();
       drawParticles();
@@ -804,9 +805,7 @@ if('serviceWorker' in navigator){
     resize();
     if(fresh){ newGame(); }
     else { const saved=loadProgress(); if(saved) restoreGame(saved); else newGame(); }
-    let wantMusic=true; try{ wantMusic = localStorage.getItem('jpi-music')!=='off'; }catch(e){}
-    if(wantMusic && !bgm.isOn()){ bgm.toggle(); sfxOn=true; musicBtn.innerHTML='&#9834;&nbsp;ON'; }
-    else if(!wantMusic){ sfxOn=false; if(bgm.isOn()) bgm.toggle(); musicBtn.innerHTML='&#9834;&nbsp;OFF'; }
+    if(JPI.on('music')!==bgm.isOn()) bgm.toggle();
   }
 
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveProgress(); });
@@ -815,12 +814,9 @@ if('serviceWorker' in navigator){
 
   startBtn.addEventListener('click', ()=>{ clearProgress(); beginGame(true); });
   resumeBtn.addEventListener('click', ()=>{ beginGame(false); });
-  musicBtn.addEventListener('click', ()=>{
-    const o=bgm.toggle();
-    sfxOn=o;
-    musicBtn.innerHTML = o ? '&#9834;&nbsp;ON' : '&#9834;&nbsp;OFF';
-    try{ localStorage.setItem('jpi-music', o?'on':'off'); }catch(e){}
-  });
+  settingsBtn.addEventListener('click', ()=>JPI.openSettings((key,val)=>{
+    if(key==='music' && bgm.isOn()!==val) bgm.toggle();
+  }));
   menuBtn.addEventListener('click', ()=>{
     saveProgress();
     window.location.href='index.html';

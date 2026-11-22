@@ -102,6 +102,12 @@
     text-decoration:none; cursor:pointer; margin-top:18px;
   }
   #classic-link:active { color:#fff; }
+  .ov-links { display:flex; gap:22px; margin-top:6px; }
+  .ov-links span {
+    color:#9a9f9f; font-size:clamp(13px,3.8vw,16px); letter-spacing:0.15em; cursor:pointer;
+    border-bottom:1px solid #3a3f3f; padding-bottom:2px;
+  }
+  .ov-links span:active { color:#fff; }
 
   /* 단계 탭 */
   #tier-tabs { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; width:min(86vw,360px); margin-bottom:2px; }
@@ -151,7 +157,7 @@
     <div id="launcher"><div class="q-ball" id="launcher-ball"></div></div>
     <div id="right-area">
       <div id="puzzle-label">PUZZLE</div>
-      <div class="bar-btn" id="music-btn">&#9834;&nbsp;ON</div>
+      <div class="bar-btn" id="settings-btn">SETTINGS</div>
       <div class="bar-btn" id="retry-btn">RETRY</div>
       <div class="bar-btn" id="levels-btn">BACK</div>
     </div>
@@ -165,6 +171,10 @@
   <div id="level-grid"></div>
   <div id="overlay-btns" style="display:flex; gap:14px;"></div>
   <div style="display:flex; flex-direction:column; gap:12px; align-items:center; margin-top:8px;">
+    <div class="ov-links" id="ov-links">
+      <span id="help-link">HOW&nbsp;TO&nbsp;PLAY</span>
+      <span id="settings-link">SETTINGS</span>
+    </div>
     <a id="classic-link" href="index.html">&#8592;&nbsp;MENU</a>
   </div>
 </div>
@@ -177,6 +187,7 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+<script src="settings.js"></script>
 <script>
 (function(){
   // ───────── 레벨 정의 ─────────
@@ -335,10 +346,9 @@ if('serviceWorker' in navigator){
 
   // ───────── 사운드 ─────────
   let audioCtx=null;
-  let sfxOn=true;
   const SFX_VOL=0.7;
   function sound(freq, dur, type, vol){
-    if(!sfxOn) return;
+    if(!JPI.on('sfx')) return;
     try{
       if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
       const o=audioCtx.createOscillator(), g=audioCtx.createGain();
@@ -503,6 +513,7 @@ if('serviceWorker' in navigator){
     clearTimeout(resultTimer);
     resultTimer=setTimeout(()=>overlay.classList.remove('hidden'), win?500:700);
     sound(win?660:150, 0.4, win?'sine':'sawtooth', win?0.25:0.18);
+    JPI.vibrate(win ? [30,60,30] : 160);
   }
 
   // ───────── 발사 ─────────
@@ -557,8 +568,10 @@ if('serviceWorker' in navigator){
       burst(b);
       b.dead=true;
       sound(520, 0.16, 'sine', 0.2);
+      JPI.vibrate(25);
     }else{
       sound(330, 0.07, 'square', 0.035);
+      JPI.vibrate(8);
     }
   }
 
@@ -837,7 +850,7 @@ if('serviceWorker' in navigator){
     if(frameDue(t === undefined ? performance.now() : t)){
       drawBackground();
       drawTip();
-      if(running) physics();
+      if(running && !JPI.isOpen()) physics();
       drawAim();
       for(const b of balls) drawBall(b);
       drawParticles();
@@ -850,22 +863,24 @@ if('serviceWorker' in navigator){
   retryBtn.addEventListener('click', ()=>{ if(LEVELS[curLevel]){ resize(); startLevel(curLevel); } });
   levelsBtn.addEventListener('click', showLevelSelect);
 
-  // ♪ 소리 켜기/끄기 (다른 모드와 같은 jpi-music 설정 공유)
-  const musicBtn = document.getElementById('music-btn');
-  function renderSfx(){ musicBtn.innerHTML='&#9834;&nbsp;'+(sfxOn?'ON':'OFF'); }
-  try{ sfxOn = localStorage.getItem('jpi-music')!=='off'; }catch(e){}
-  renderSfx();
-  musicBtn.addEventListener('click', ()=>{
-    sfxOn=!sfxOn;
-    renderSfx();
-    try{ localStorage.setItem('jpi-music', sfxOn?'on':'off'); }catch(e){}
-  });
+  const HELP = [
+    '화면을 누른 채 손가락을 움직여 조준하고, 손을 떼면 발사됩니다. 발사대에서 먼 곳을 누를수록 세게 나갑니다.',
+    '쏠 수 있는 공은 정해져 있습니다. 왼쪽 아래 SHOTS가 남은 공 수이고, 옆에 다음 공이 보입니다.',
+    '같은 색 공끼리 닿으면 두 공의 숫자가 1씩 줄고, 0이 되면 터집니다.',
+    '✕ 방해물은 터지지 않고 길을 막기만 합니다. 벽에 튕겨서 돌아가세요.',
+    '색깔 공을 모두 터뜨리면 클리어입니다.',
+    '공을 다 쓰고도 공이 남아 있거나, 공이 아래 선 밖으로 빠지면 실패입니다.'
+  ];
+  document.getElementById('settings-btn').addEventListener('click', ()=>{ aiming=false; JPI.openSettings(); });
+  document.getElementById('settings-link').addEventListener('click', ()=>JPI.openSettings());
+  document.getElementById('help-link').addEventListener('click', ()=>JPI.openHelp('HOW TO PLAY', HELP));
 
-  // 시작: 풀던 레벨이 있으면 그 레벨로 복귀, 없으면 레벨 선택 화면
+  // 시작: 풀던 레벨이 있으면 그 레벨로 복귀, 없으면 레벨 선택 화면 (처음이면 설명부터)
   (function init(){
     const lv=loadCurLevel();
     if(lv!==null){ resize(); startLevel(lv); }
     else { showLevelSelect(); }
+    JPI.helpOnce('puzzle', 'HOW TO PLAY', HELP);
   })();
 })();
 </script>

@@ -83,8 +83,9 @@
     <a class="mode puzzle"  href="puzzle.html"><span class="ic">&#9737;</span>PUZZLE</a>
     <a class="mode bigbang" href="bigbang.html"><span class="ic">&#10039;</span>BIG&nbsp;BANG</a>
   </div>
-  <div id="music">&#9834;&nbsp;MUSIC&nbsp;ON</div>
+  <div id="music">SETTINGS</div>
 </div>
+<script src="settings.js"></script>
 <script>
   const $=id=>document.getElementById(id);
 
@@ -201,25 +202,14 @@
     };
   })();
 
-  // ── 음악 ON/OFF (설정 저장 + 첫 페이지에서도 재생) ──
-  function getMusic(){ try{ return localStorage.getItem('jpi-music')!=='off'; }catch(e){ return true; } }
-  function setMusic(on){ try{ localStorage.setItem('jpi-music', on?'on':'off'); }catch(e){} }
-  function renderMusic(){
-    const on=getMusic();
-    $('music').innerHTML='&#9834;&nbsp;MUSIC&nbsp;'+(on?'ON':'OFF');
-    $('music').classList.toggle('on', on);
-  }
-  $('music').addEventListener('click', (e)=>{
-    e.stopPropagation();
-    const want=!getMusic();
-    setMusic(want); renderMusic();
-    if(bgm.isOn()!==want) bgm.toggle();
+  // ── 설정 (배경음악·효과음·진동) ──
+  $('music').addEventListener('click', ()=>{
+    JPI.openSettings((key,val)=>{ if(key==='music' && bgm.isOn()!==val) bgm.toggle(); });
   });
-  renderMusic();
 
   // 브라우저 자동재생 차단 때문에, 첫 탭(아무 곳이나) 시 음악 시작
   function firstStart(){
-    if(getMusic() && !bgm.isOn()) bgm.toggle();
+    if(JPI.on('music') && !bgm.isOn()) bgm.toggle();
     document.removeEventListener('pointerdown', firstStart);
   }
   document.addEventListener('pointerdown', firstStart);

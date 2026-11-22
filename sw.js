@@ -1,8 +1,9 @@
 // Just Pop It — 오프라인 캐시
-const CACHE = 'jpi-v20';
+const CACHE = 'jpi-v21';
 const ASSETS = [
   './',
   './index.html',
+  './settings.js',
   './classic.html',
   './solar.html',
   './puzzle.html',
@@ -27,11 +28,12 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// HTML은 네트워크 우선(최신 코드 반영), 나머지는 캐시 우선
+// HTML·JS는 네트워크 우선(최신 코드 반영), 나머지는 캐시 우선
 self.addEventListener('fetch', e => {
   const req = e.request;
   const isHTML = req.mode === 'navigate' || (req.headers.get('accept')||'').includes('text/html');
-  if (isHTML) {
+  const isJS = new URL(req.url).pathname.endsWith('.js');
+  if (isHTML || isJS) {
     e.respondWith(
       fetch(req).then(res => {
         const copy = res.clone();
